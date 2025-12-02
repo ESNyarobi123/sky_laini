@@ -29,7 +29,7 @@
 
         <div class="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-white/5 pt-4 md:pt-0 mt-2 md:mt-0">
             <div class="text-left md:text-right">
-                <div class="text-amber-500 font-black text-2xl">TSh 5,000</div>
+                <div class="text-amber-500 font-black text-2xl">TSh {{ number_format($request->service_fee) }}</div>
                 <div class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Malipo</div>
             </div>
             

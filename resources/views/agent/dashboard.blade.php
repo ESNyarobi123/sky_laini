@@ -163,7 +163,7 @@
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <div class="text-2xl font-black text-white tracking-tight">TSh 5,000</div>
+                                        <div class="text-2xl font-black text-white tracking-tight">TSh {{ number_format($job->service_fee) }}</div>
                                         <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Malipo</div>
                                     </div>
                                 </div>
@@ -249,7 +249,7 @@
 
                             <div class="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-white/5 pt-4 md:pt-0 mt-2 md:mt-0">
                                 <div class="text-left md:text-right">
-                                    <div class="text-amber-500 font-black text-2xl">TSh 5,000</div>
+                                    <div class="text-amber-500 font-black text-2xl">TSh {{ number_format($request->service_fee) }}</div>
                                     <div class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Malipo</div>
                                 </div>
                                 
@@ -335,6 +335,7 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 <script>
@@ -481,7 +482,7 @@
                                 <div>
                                     <h3 class="font-bold text-sm">${req.customer.user.name}</h3>
                                     <p class="text-xs text-gray-400">${req.location ?? 'Unknown'}</p>
-                                    <p class="text-amber-500 font-bold text-sm mt-1">TSh 5,000</p>
+                                    <p class="text-amber-500 font-bold text-sm mt-1">TSh ${new Intl.NumberFormat().format(req.service_fee)}</p>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
@@ -719,6 +720,63 @@
                 }).catch(err => console.error('Status toggle failed', err));
             });
         }
+
+        // --- Real-Time Job Listener ---
+        const agentId = {{ $agent->id }};
+        
+        // Wait for window.listenForJobs to be available (it comes from app.js)
+        const initRealTimeListener = setInterval(() => {
+            if (window.listenForJobs) {
+                clearInterval(initRealTimeListener);
+                
+                window.listenForJobs(agentId, (e) => {
+                    console.log('Job received via WebSocket:', e);
+                    
+                    // Play Notification Sound
+                    try {
+                        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                        audio.play();
+                    } catch (err) {
+                        console.log('Audio play failed', err);
+                    }
+
+                    Swal.fire({
+                        title: '🔔 Kazi Mpya!',
+                        html: `
+                            <div class="text-left">
+                                <p class="font-bold text-lg">${e.customer.name}</p>
+                                <p class="text-gray-400">Anahitaji laini ya <b class="uppercase text-amber-500">${e.line_type}</b></p>
+                                <div class="mt-4 p-3 bg-white/5 rounded-lg border border-white/10">
+                                    <p class="text-sm text-gray-300">📍 ${e.customer.address ?? 'Eneo la Mteja'}</p>
+                                </div>
+                            </div>
+                        `,
+                        icon: 'success',
+                        showCancelButton: true,
+                        confirmButtonText: 'Angalia Sasa',
+                        cancelButtonText: 'Baadaye',
+                        confirmButtonColor: '#f59e0b',
+                        cancelButtonColor: '#374151',
+                        background: 'rgba(20, 20, 20, 0.95)',
+                        color: '#fff',
+                        backdrop: `
+                            rgba(0,0,0,0.4)
+                            url("https://media.giphy.com/media/3o7aD2saalBwwftBIY/giphy.gif")
+                            left top
+                            no-repeat
+                        `
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Highlight the new request on map if possible, or just reload
+                            window.location.reload();
+                        }
+                    });
+                    
+                    // Refresh data immediately
+                    checkForUpdates();
+                });
+            }
+        }, 100);
 
         // --- Polling for Updates ---
         setInterval(checkForUpdates, 5000);

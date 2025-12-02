@@ -12,6 +12,7 @@ use App\Services\ZenoPayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Events\LineRequestAssigned;
 
 class LineRequestController extends Controller
 {
@@ -63,6 +64,9 @@ class LineRequestController extends Controller
             ]);
 
             $this->notificationService->notifyAgent($agent->user, $lineRequest);
+            
+            // Broadcast event to the agent in real-time
+            LineRequestAssigned::dispatch($lineRequest);
         }
 
         return response()->json($lineRequest->load(['customer', 'agent']), 201);

@@ -64,6 +64,7 @@ class LineRequestController extends Controller
             'customer_longitude' => $validated['customer_longitude'],
             'customer_address' => $validated['customer_address'] ?? null,
             'customer_phone' => $validated['customer_phone'],
+            'service_fee' => \App\Models\SystemSetting::where('key', 'price_per_laini')->value('value') ?? 1000,
         ]);
 
         // Find best matching agent (optional: just to notify someone nearby)
@@ -116,7 +117,15 @@ class LineRequestController extends Controller
 
         $lineRequest->load(['customer', 'agent.user', 'payment', 'rating']);
 
-        return view('customer.line-requests.show', compact('lineRequest'));
+        // Fetch nearby online agents to show on map (Visual Trust)
+        $nearbyAgents = \App\Models\Agent::with('user')
+            ->where('is_online', true)
+            ->whereNotNull('current_latitude')
+            ->whereNotNull('current_longitude')
+            ->limit(20)
+            ->get();
+
+        return view('customer.line-requests.show', compact('lineRequest', 'nearbyAgents'));
     }
 
     /**

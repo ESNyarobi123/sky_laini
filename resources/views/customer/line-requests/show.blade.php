@@ -127,7 +127,7 @@
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-gray-400 text-sm">Gharama</span>
-                        <span class="text-amber-500 font-bold text-lg">TSh 5,000</span>
+                        <span class="text-amber-500 font-bold text-lg">TSh {{ number_format($lineRequest->service_fee) }}</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-gray-400 text-sm">Namba ya Simu</span>
@@ -202,7 +202,7 @@
                                     </div>
                                     <div>
                                         <p class="text-amber-500 font-bold text-base mb-1">Malipo Yanahitajika</p>
-                                        <p class="text-gray-400 text-sm">Lipia <span class="text-white font-bold">TSh 1,000</span> ili kupata kodi ya kukamilisha usajili.</p>
+                                        <p class="text-gray-400 text-sm">Lipia <span class="text-white font-bold">TSh {{ number_format($lineRequest->service_fee) }}</span> ili kupata kodi ya kukamilisha usajili.</p>
                                     </div>
                                 </div>
                             </div>
@@ -301,6 +301,29 @@
         let agentMarker = null;
         let routingControl = null;
 
+        // --- Plot Nearby Agents (Visual Trust) ---
+        const nearbyAgents = @json($nearbyAgents);
+        
+        const availableAgentIcon = L.divIcon({
+            className: 'available-agent-icon',
+            html: `
+                <div class="w-8 h-8 bg-gray-700/80 rounded-full border border-white/20 flex items-center justify-center shadow-lg backdrop-blur-sm transition hover:scale-110">
+                    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+
+        nearbyAgents.forEach(agent => {
+            // Don't show the assigned agent again if they are in this list
+            if (hasAgent && agent.id === {{ $lineRequest->agent_id ?? 'null' }}) return;
+
+            L.marker([agent.current_latitude, agent.current_longitude], {icon: availableAgentIcon})
+                .addTo(map)
+                .bindPopup(`<div class="text-xs font-bold text-black p-1">${agent.user.name}</div>`);
+        });
+
         if (hasAgent && agentLat && agentLng) {
             agentMarker = L.marker([agentLat, agentLng], {icon: agentIcon}).addTo(map);
             drawRoute(agentLat, agentLng);
@@ -380,7 +403,7 @@
         const btn = document.getElementById('pay-btn');
         const msg = document.getElementById('payment-msg');
         
-        if(!confirm('Unataka kulipia TSh 1,000 kupitia ZenoPay?')) return;
+        if(!confirm('Unataka kulipia TSh {{ number_format($lineRequest->service_fee) }} kupitia ZenoPay?')) return;
 
         btn.disabled = true;
         btn.innerHTML = '<span class="animate-pulse">Inaanzisha Malipo...</span>';

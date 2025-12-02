@@ -31,7 +31,7 @@
                             </div>
                         </div>
                         <div class="text-right">
-                            <div class="text-2xl font-black text-white tracking-tight">TSh 5,000</div>
+                            <div class="text-2xl font-black text-white tracking-tight">TSh {{ number_format($job->service_fee) }}</div>
                             <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Malipo</div>
                         </div>
                     </div>

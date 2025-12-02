@@ -92,7 +92,7 @@
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-gray-400 text-sm">Malipo Yako</span>
-                        <span class="text-green-500 font-bold text-lg">TSh 5,000</span>
+                        <span class="text-green-500 font-bold text-lg">TSh {{ number_format($lineRequest->service_fee) }}</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-gray-400 text-sm">Namba ya Mteja</span>
