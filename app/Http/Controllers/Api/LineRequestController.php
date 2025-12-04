@@ -103,4 +103,26 @@ class LineRequestController extends Controller
 
         return response()->json($lineRequest->load(['customer', 'agent.user', 'payment', 'rating']));
     }
+
+    /**
+     * Cancel a line request.
+     */
+    public function cancel(Request $request, LineRequest $lineRequest): JsonResponse
+    {
+        // Ensure the request belongs to the authenticated customer
+        if ($lineRequest->customer->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($lineRequest->status === RequestStatus::Completed) {
+            return response()->json(['message' => 'Cannot cancel a completed request'], 400);
+        }
+
+        $lineRequest->update([
+            'status' => RequestStatus::Cancelled,
+            'cancelled_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Request cancelled successfully']);
+    }
 }

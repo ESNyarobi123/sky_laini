@@ -106,4 +106,25 @@ class PaymentController extends Controller
 
         return response()->json(['message' => 'Invalid code'], 400);
     }
+
+    public function cancelJobPayment(Request $request, LineRequest $lineRequest)
+    {
+        // Ensure user is the customer
+        if ($request->user()->id !== $lineRequest->customer->user_id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($lineRequest->payment_status === 'paid') {
+            return response()->json(['message' => 'Cannot cancel payment for a paid job'], 400);
+        }
+
+        // Logic to cancel payment with ZenoPay if needed, or just update local status
+        // For now, we just reset the payment status
+        $lineRequest->update([
+            'payment_status' => 'cancelled',
+            'payment_order_id' => null
+        ]);
+
+        return response()->json(['message' => 'Payment cancelled successfully']);
+    }
 }

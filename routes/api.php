@@ -43,9 +43,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [LineRequestController::class, 'index']);
         Route::post('/', [LineRequestController::class, 'store']);
         Route::get('/{lineRequest}', [LineRequestController::class, 'show']);
+        Route::post('/{lineRequest}/cancel', [LineRequestController::class, 'cancel']);
         
         // Payment routes for Customer
         Route::post('/{lineRequest}/pay', [PaymentController::class, 'initiate']);
+        Route::post('/{lineRequest}/cancel-pay', [PaymentController::class, 'cancelJobPayment']);
         Route::get('/{lineRequest}/payment-status', [PaymentController::class, 'checkStatus']);
     });
 });
