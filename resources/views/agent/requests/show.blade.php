@@ -41,85 +41,141 @@
             <button class="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition">
                 Sitisha Kazi
             </button>
+            @if($lineRequest->payment_status === 'paid')
             <button onclick="completeJob({{ $lineRequest->id }})" class="px-6 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-bold shadow-lg shadow-green-500/20 transition">
                 Kamilisha Kazi
             </button>
+            @endif
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Map Section -->
-        <div class="lg:col-span-2 glass-card rounded-3xl p-1 border border-white/10 relative overflow-hidden">
-            <div id="map"></div>
+    @if($lineRequest->payment_status !== 'paid')
+        <!-- LOCKED STATE: Waiting for Payment -->
+        <div class="glass-card rounded-3xl p-12 text-center border border-white/10 flex flex-col items-center justify-center min-h-[400px]">
+            <div class="w-24 h-24 rounded-full bg-amber-500/20 flex items-center justify-center mb-6 animate-pulse">
+                <svg class="w-12 h-12 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">Inasubiri Malipo ya Mteja</h2>
+            <p class="text-gray-400 max-w-md mx-auto mb-8">
+                Mteja ametumiwa ombi la malipo (USSD). Tafadhali subiri malipo yakamilike ili uone ramani na mawasiliano ya mteja.
+            </p>
             
-            <!-- Floating Customer Card -->
-            <div class="absolute top-4 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-black/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl z-[400]">
+            <div class="flex flex-col items-center gap-4">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xl">
-                        {{ substr($lineRequest->customer->user->name, 0, 1) }}
+                    <div class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
+                        <div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+                        <span class="text-sm font-bold text-gray-300">Inasubiri Malipo...</span>
                     </div>
-                    <div>
-                        <p class="text-gray-400 text-xs font-bold uppercase">Mteja</p>
-                        <h3 class="text-white font-bold">{{ $lineRequest->customer->user->name }}</h3>
-                        <div class="flex items-center gap-1 text-blue-400 text-xs font-bold">
-                            {{ $lineRequest->line_type }}
+                    <button onclick="checkPaymentStatus({{ $lineRequest->id }})" class="px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Angalia Tena
+                    </button>
+                </div>
+
+                <!-- Retry Payment Button -->
+                <div class="mt-4 pt-4 border-t border-white/10 w-full max-w-xs">
+                    <p class="text-gray-500 text-xs mb-2">Mteja hajapata USSD?</p>
+                    <button onclick="retryPayment({{ $lineRequest->id }})" class="w-full px-6 py-3 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 font-bold transition flex items-center justify-center gap-2 border border-blue-500/20">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Tuma Tena USSD ({{ $lineRequest->payment_attempts }}/3)
+                    </button>
+                </div>
+            </div>
+        </div>
+    @else
+        <!-- UNLOCKED STATE: Full Details -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Map Section -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="glass-card rounded-3xl p-1 border border-white/10 relative overflow-hidden">
+                    <div id="map"></div>
+                    
+                    <!-- Floating Customer Card -->
+                    <div class="absolute top-4 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-black/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl z-[400]">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xl">
+                                {{ substr($lineRequest->customer->user->name, 0, 1) }}
+                            </div>
+                            <div>
+                                <p class="text-gray-400 text-xs font-bold uppercase">Mteja</p>
+                                <h3 class="text-white font-bold">{{ $lineRequest->customer->user->name }}</h3>
+                                <div class="flex items-center gap-1 text-blue-400 text-xs font-bold">
+                                    {{ $lineRequest->line_type }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-2">
+                            <a href="tel:{{ $lineRequest->customer_phone }}" class="flex items-center justify-center gap-2 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                                Piga Simu
+                            </a>
+                            <a href="https://www.google.com/maps/dir/?api=1&destination={{ $lineRequest->customer_latitude }},{{ $lineRequest->customer_longitude }}" target="_blank" class="flex items-center justify-center gap-2 py-2 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold text-sm transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                Google Maps
+                            </a>
                         </div>
                     </div>
                 </div>
-                
-                <div class="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-2">
-                    <a href="tel:{{ $lineRequest->customer_phone }}" class="flex items-center justify-center gap-2 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-                        Piga Simu
-                    </a>
-                    <a href="https://www.google.com/maps/dir/?api=1&destination={{ $lineRequest->customer_latitude }},{{ $lineRequest->customer_longitude }}" target="_blank" class="flex items-center justify-center gap-2 py-2 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold text-sm transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        Google Maps
-                    </a>
-                </div>
-            </div>
-        </div>
 
-        <!-- Details Column -->
-        <div class="space-y-6">
-            <!-- Request Details -->
-            <div class="glass-card rounded-3xl p-6 border border-white/10">
-                <h3 class="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">Maelezo ya Kazi</h3>
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-400 text-sm">Aina ya Laini</span>
-                        <span class="text-white font-bold">{{ ucfirst($lineRequest->line_type->value) }}</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-400 text-sm">Malipo Yako</span>
-                        <span class="text-green-500 font-bold text-lg">TSh {{ number_format($lineRequest->service_fee) }}</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-400 text-sm">Namba ya Mteja</span>
-                        <span class="text-white font-bold">{{ $lineRequest->customer_phone }}</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-400 text-sm">Tarehe</span>
-                        <span class="text-white font-bold">{{ $lineRequest->created_at->format('d M, Y') }}</span>
+                <!-- Completion Code Section -->
+                <div class="glass-card rounded-3xl p-8 border border-white/10 bg-gradient-to-br from-green-500/10 to-transparent">
+                    <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Kamilisha Kazi
+                    </h3>
+                    <p class="text-gray-400 mb-6">Ingiza kodi ya siri (Confirmation Code) kutoka kwa mteja ili kukamilisha kazi na kupokea malipo.</p>
+                    
+                    <div class="flex gap-4">
+                        <input type="text" id="completion-code" placeholder="Ingiza Kodi Hapa (mf. X7Y2Z)" class="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-lg focus:outline-none focus:border-green-500 transition uppercase">
+                        <button onclick="completeJob({{ $lineRequest->id }})" class="px-8 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-bold shadow-lg shadow-green-500/20 transition">
+                            Thibitisha
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Location Details -->
-            <div class="glass-card rounded-3xl p-6 border border-white/10">
-                <h3 class="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">Eneo la Mteja</h3>
-                <div class="flex items-start gap-3">
-                    <div class="mt-1 w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <!-- Details Column -->
+            <div class="space-y-6">
+                <!-- Request Details -->
+                <div class="glass-card rounded-3xl p-6 border border-white/10">
+                    <h3 class="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">Maelezo ya Kazi</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 text-sm">Aina ya Laini</span>
+                            <span class="text-white font-bold">{{ ucfirst($lineRequest->line_type->value) }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 text-sm">Malipo Yako</span>
+                            <span class="text-green-500 font-bold text-lg">TSh {{ number_format($lineRequest->service_fee) }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 text-sm">Namba ya Mteja</span>
+                            <span class="text-white font-bold">{{ $lineRequest->customer_phone }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 text-sm">Tarehe</span>
+                            <span class="text-white font-bold">{{ $lineRequest->created_at->format('d M, Y') }}</span>
+                        </div>
                     </div>
-                    <div>
-                        <p class="text-white font-bold text-sm">{{ $lineRequest->customer_address ?? 'Coordinates Only' }}</p>
-                        <p class="text-gray-500 text-xs mt-1">Lat: {{ number_format($lineRequest->customer_latitude, 6) }}, Lng: {{ number_format($lineRequest->customer_longitude, 6) }}</p>
+                </div>
+
+                <!-- Location Details -->
+                <div class="glass-card rounded-3xl p-6 border border-white/10">
+                    <h3 class="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">Eneo la Mteja</h3>
+                    <div class="flex items-start gap-3">
+                        <div class="mt-1 w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-white font-bold text-sm">{{ $lineRequest->customer_address ?? 'Coordinates Only' }}</p>
+                            <p class="text-gray-500 text-xs mt-1">Lat: {{ number_format($lineRequest->customer_latitude, 6) }}, Lng: {{ number_format($lineRequest->customer_longitude, 6) }}</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    @endif
 </div>
 @endsection
 
@@ -268,8 +324,13 @@
     });
 
     function completeJob(id) {
-        const code = prompt("Tafadhali ingiza kodi ya kukamilisha kutoka kwa mteja:");
-        if (!code) return;
+        const codeInput = document.getElementById('completion-code');
+        const code = codeInput ? codeInput.value : null;
+        
+        if (!code) {
+            alert("Tafadhali ingiza kodi ya kukamilisha.");
+            return;
+        }
 
         fetch(`/agent/requests/${id}/complete`, {
             method: 'POST',
@@ -283,7 +344,7 @@
         .then(data => {
             if (data.message === 'Job completed successfully!') {
                 alert(data.message);
-                window.location.href = '{{ route("agent.dashboard") }}';
+                window.location.href = '{{ route("agent.earnings.index") }}'; // Redirect to earnings
             } else {
                 alert('Imeshindikana: ' + (data.message || 'Kodi siyo sahihi'));
             }
@@ -293,5 +354,54 @@
             alert('Kuna tatizo la kiufundi.');
         });
     }
+
+    function retryPayment(id) {
+        if(!confirm('Je, unataka kutuma tena ombi la malipo kwa mteja?')) return;
+
+        fetch(`/agent/requests/${id}/retry-payment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.released) {
+                alert(data.message);
+                window.location.href = '{{ route("agent.gigs.index") }}';
+            } else {
+                alert(data.message);
+                window.location.reload();
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Kuna tatizo la kiufundi.');
+        });
+    }
+
+    // Payment Status Polling
+    function checkPaymentStatus(id) {
+        fetch(`/agent/requests/${id}/payment-status`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'paid') {
+                    // Reload page to unlock view
+                    window.location.reload();
+                } else {
+                    // Optional: Show a toast or small indicator that we checked
+                    console.log('Payment pending...');
+                }
+            })
+            .catch(err => console.error('Error checking payment status:', err));
+    }
+
+    // Auto-poll every 5 seconds if payment is pending
+    @if($lineRequest->payment_status !== 'paid')
+        setInterval(() => {
+            checkPaymentStatus({{ $lineRequest->id }});
+        }, 5000);
+    @endif
 </script>
 @endpush

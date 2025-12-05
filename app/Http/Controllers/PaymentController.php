@@ -94,12 +94,38 @@ class PaymentController extends Controller
         }
 
         if ($lineRequest->confirmation_code === $request->code) {
+            // Calculate Commission (e.g., 80% to agent)
+            $amount = $lineRequest->service_fee ?? 1000;
+            $commissionRate = 0.8;
+            $earnings = $amount * $commissionRate;
+
             $lineRequest->update([
                 'status' => RequestStatus::Completed,
-                'completed_at' => now()
+                'completed_at' => now(),
+                'commission' => $earnings
             ]);
 
-            // TODO: Add logic to credit agent wallet here
+            // Credit Agent Wallet
+            $agent = $lineRequest->agent;
+            if ($agent && $agent->wallet) {
+                $wallet = $agent->wallet;
+                $balanceBefore = $wallet->balance;
+                $wallet->balance += $earnings;
+                $wallet->save();
+                
+                $wallet->transactions()->create([
+                    'line_request_id' => $lineRequest->id,
+                    'transaction_type' => 'credit',
+                    'amount' => $earnings,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $wallet->balance,
+                    'description' => 'Earnings for Request #' . $lineRequest->request_number,
+                ]);
+                
+                $agent->total_earnings += $earnings;
+                $agent->total_completed_requests += 1;
+                $agent->save();
+            }
 
             return response()->json(['message' => 'Job completed successfully!']);
         }

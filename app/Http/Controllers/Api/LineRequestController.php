@@ -59,8 +59,6 @@ class LineRequestController extends Controller
         if ($agent) {
             $lineRequest->update([
                 'agent_id' => $agent->id,
-                'status' => RequestStatus::Accepted,
-                'accepted_at' => now(),
             ]);
 
             $this->notificationService->notifyAgent($agent->user, $lineRequest);
@@ -101,7 +99,18 @@ class LineRequestController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        return response()->json($lineRequest->load(['customer', 'agent.user', 'payment', 'rating']));
+        $lineRequest->load(['customer', 'agent.user', 'payment', 'rating']);
+
+        // Hide details if not paid
+        if ($lineRequest->payment_status !== 'paid') {
+            $lineRequest->confirmation_code = null;
+            if ($lineRequest->agent) {
+                $lineRequest->agent->current_latitude = null;
+                $lineRequest->agent->current_longitude = null;
+            }
+        }
+
+        return response()->json($lineRequest);
     }
 
     /**
@@ -124,5 +133,53 @@ class LineRequestController extends Controller
         ]);
 
         return response()->json(['message' => 'Request cancelled successfully']);
+    }
+
+    /**
+     * Rate the agent for a completed request.
+     */
+    public function rate(Request $request, LineRequest $lineRequest): JsonResponse
+    {
+        // Ensure the request belongs to the authenticated customer
+        if ($lineRequest->customer->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($lineRequest->status !== RequestStatus::Completed) {
+            return response()->json(['message' => 'Cannot rate an incomplete request'], 400);
+        }
+
+        if ($lineRequest->rating) {
+            return response()->json(['message' => 'Request already rated'], 400);
+        }
+
+        $validated = $request->validate([
+            'rating' => 'required|numeric|min:1|max:5',
+            'review' => 'nullable|string',
+        ]);
+
+        $rating = $lineRequest->rating()->create([
+            'customer_id' => $lineRequest->customer_id,
+            'agent_id' => $lineRequest->agent_id,
+            'rating' => $validated['rating'],
+            'review' => $validated['review'] ?? null,
+        ]);
+
+        // Update Agent's average rating
+        $agent = $lineRequest->agent;
+        if ($agent) {
+            $newTotalRatings = $agent->total_ratings + 1;
+            // Calculate new average: ((old_avg * old_count) + new_rating) / new_count
+            // But if old_avg is null/0, handle it.
+            $currentTotalScore = ($agent->rating * $agent->total_ratings);
+            $newRating = ($currentTotalScore + $validated['rating']) / $newTotalRatings;
+
+            $agent->update([
+                'rating' => $newRating,
+                'total_ratings' => $newTotalRatings,
+            ]);
+        }
+
+        return response()->json($rating, 201);
     }
 }

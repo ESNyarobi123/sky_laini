@@ -34,6 +34,9 @@ class LineRequest extends Model
         'completed_at',
         'cancelled_at',
         'cancellation_reason',
+        'payment_order_id',
+        'payment_status',
+        'payment_attempts',
     ];
 
     protected function casts(): array

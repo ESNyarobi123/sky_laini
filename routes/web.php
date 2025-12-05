@@ -33,8 +33,13 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
     Route::post('/location', [\App\Http\Controllers\Customer\TrackingController::class, 'updateCustomerLocation'])->name('location.update');
     
     // Payment Routes
+    Route::get('/payments', [\App\Http\Controllers\Customer\PaymentController::class, 'index'])->name('payments.index');
     Route::post('/requests/{lineRequest}/pay', [\App\Http\Controllers\PaymentController::class, 'initiate'])->name('requests.pay');
     Route::get('/requests/{lineRequest}/payment-status', [\App\Http\Controllers\PaymentController::class, 'checkStatus'])->name('requests.payment-status');
+
+    // Support Routes
+    Route::get('/support', [\App\Http\Controllers\Customer\SupportController::class, 'index'])->name('support.index');
+    Route::post('/support', [\App\Http\Controllers\Customer\SupportController::class, 'store'])->name('support.store');
 });
 
 // Agent Dashboard
@@ -48,9 +53,21 @@ Route::middleware(['auth'])->prefix('agent')->name('agent.')->group(function () 
     Route::post('/requests/{lineRequest}/release', [\App\Http\Controllers\Agent\RequestActionController::class, 'release'])->name('requests.release');
     Route::get('/requests/{lineRequest}', [\App\Http\Controllers\Agent\RequestController::class, 'show'])->name('requests.show');
     Route::post('/requests/{lineRequest}/complete', [\App\Http\Controllers\PaymentController::class, 'completeJob'])->name('requests.complete');
+    Route::post('/requests/{lineRequest}/retry-payment', [\App\Http\Controllers\Agent\RequestActionController::class, 'retryPayment'])->name('requests.retry-payment');
+    Route::get('/requests/{lineRequest}/payment-status', [\App\Http\Controllers\PaymentController::class, 'checkStatus'])->name('requests.payment-status');
     
+    // Available Gigs
+    Route::get('/gigs', [\App\Http\Controllers\Agent\AvailableGigsController::class, 'index'])->name('gigs.index');
+
+    // Earnings
+    Route::get('/earnings', [\App\Http\Controllers\Agent\EarningsController::class, 'index'])->name('earnings.index');
+
     // Documents
     Route::post('/documents/upload', [\App\Http\Controllers\Agent\DocumentController::class, 'upload'])->name('documents.upload');
+
+    // Support
+    Route::get('/support', [\App\Http\Controllers\Agent\SupportController::class, 'index'])->name('support.index');
+    Route::post('/support', [\App\Http\Controllers\Agent\SupportController::class, 'store'])->name('support.store');
 });
 
 // Admin Dashboard
@@ -73,4 +90,28 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('/agents', [\App\Http\Controllers\Admin\AgentController::class, 'index'])->name('agents.index');
     Route::get('/agents/{agent}', [\App\Http\Controllers\Admin\AgentController::class, 'show'])->name('agents.show');
     Route::post('/agents/{agent}/toggle', [\App\Http\Controllers\Admin\AgentController::class, 'toggleStatus'])->name('agents.toggle');
+
+    // Support
+    Route::get('/support', [\App\Http\Controllers\Admin\SupportController::class, 'index'])->name('support.index');
+    Route::get('/support/{user}', [\App\Http\Controllers\Admin\SupportController::class, 'show'])->name('support.show');
+    Route::post('/support/reply', [\App\Http\Controllers\Admin\SupportController::class, 'reply'])->name('support.reply');
+
+    // Orders
+    Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('orders.show');
+
+    // Payments
+    Route::get('/payments', [\App\Http\Controllers\Admin\PaymentController::class, 'index'])->name('payments.index');
+
+    // Withdrawals
+    Route::get('/withdrawals', [\App\Http\Controllers\Admin\WithdrawalController::class, 'index'])->name('withdrawals.index');
+    Route::post('/withdrawals/{withdrawal}/approve', [\App\Http\Controllers\Admin\WithdrawalController::class, 'approve'])->name('withdrawals.approve');
+    Route::post('/withdrawals/{withdrawal}/reject', [\App\Http\Controllers\Admin\WithdrawalController::class, 'reject'])->name('withdrawals.reject');
+
+    // Activity
+    Route::get('/activity', [\App\Http\Controllers\Admin\ActivityController::class, 'index'])->name('activity.index');
+
+    // Tickets (Detailed View)
+    Route::resource('tickets', \App\Http\Controllers\Admin\TicketController::class)->only(['index', 'show']);
+    Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\Admin\TicketController::class, 'reply'])->name('tickets.reply');
 });

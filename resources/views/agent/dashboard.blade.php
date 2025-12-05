@@ -58,11 +58,20 @@
             <p class="text-gray-400 font-medium text-lg">Hapa kuna muhtasari wa kazi zako leo.</p>
         </div>
         
-        <div class="flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-md shadow-xl">
-            <span class="text-sm font-bold text-gray-300 px-2 uppercase tracking-wider">Niko Hewani</span>
-            <div class="relative inline-block w-14 mr-2 align-middle select-none transition duration-200 ease-in">
-                <input type="checkbox" name="toggle" id="toggle" {{ $agent->is_online ? 'checked' : '' }} class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 checked:left-7 checked:bg-black checked:border-amber-500 shadow-sm"/>
-                <label for="toggle" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-700 cursor-pointer transition-colors duration-300"></label>
+        <div class="flex items-center gap-4">
+            <a href="{{ route('agent.support.index') }}" class="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-3 rounded-2xl border border-white/10 backdrop-blur-md shadow-xl transition group">
+                <div class="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 group-hover:scale-110 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                </div>
+                <span class="text-sm font-bold text-gray-300 uppercase tracking-wider hidden md:block">Support</span>
+            </a>
+
+            <div class="flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-md shadow-xl">
+                <span class="text-sm font-bold text-gray-300 px-2 uppercase tracking-wider">Niko Hewani</span>
+                <div class="relative inline-block w-14 mr-2 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="toggle" {{ $agent->is_online ? 'checked' : '' }} class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 checked:left-7 checked:bg-black checked:border-amber-500 shadow-sm"/>
+                    <label for="toggle" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-700 cursor-pointer transition-colors duration-300"></label>
+                </div>
             </div>
         </div>
     </div>

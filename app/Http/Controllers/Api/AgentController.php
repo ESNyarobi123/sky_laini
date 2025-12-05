@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\LineRequest;
 use App\RequestStatus;
+use App\Services\ZenoPayService;
+use App\Models\SystemSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AgentController extends Controller
 {
+    public function __construct(
+        private ZenoPayService $zenoPayService
+    ) {}
     /**
      * Get agent profile.
      */
@@ -99,7 +104,15 @@ class AgentController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        return response()->json($lineRequest->load(['customer.user', 'payment']));
+        $lineRequest->load(['customer.user', 'payment']);
+
+        if ($lineRequest->payment_status !== 'paid') {
+            $lineRequest->customer_latitude = null;
+            $lineRequest->customer_longitude = null;
+            $lineRequest->customer_address = null;
+        }
+
+        return response()->json($lineRequest);
     }
 
     /**
@@ -120,10 +133,28 @@ class AgentController extends Controller
         }
 
         if ($validated['action'] === 'accept') {
-            $lineRequest->update([
+            // Initiate Payment
+            $amount = SystemSetting::where('key', 'price_per_laini')->value('value') ?? 1000;
+            
+            $result = $this->zenoPayService->createOrder(
+                $lineRequest->customer->user->name,
+                $lineRequest->customer->user->email,
+                $lineRequest->customer_phone,
+                $amount
+            );
+
+            $updateData = [
                 'status' => RequestStatus::Accepted,
                 'accepted_at' => now(),
-            ]);
+            ];
+
+            if ($result['success']) {
+                $updateData['payment_order_id'] = $result['order_id'];
+                $updateData['payment_status'] = 'pending';
+                $updateData['service_fee'] = $amount;
+            }
+
+            $lineRequest->update($updateData);
         } else {
             $lineRequest->update([
                 'status' => RequestStatus::Cancelled, // Or Rejected if enum exists
@@ -132,5 +163,20 @@ class AgentController extends Controller
         }
 
         return response()->json($lineRequest);
+    }
+
+    /**
+     * Get available gigs (pending requests).
+     */
+    public function gigs(Request $request): JsonResponse
+    {
+        // In a real system, filter by location radius
+        $gigs = LineRequest::with(['customer.user'])
+            ->where('status', RequestStatus::Pending)
+            ->whereNull('agent_id') // Only unassigned requests
+            ->latest()
+            ->paginate(15);
+
+        return response()->json($gigs);
     }
 }

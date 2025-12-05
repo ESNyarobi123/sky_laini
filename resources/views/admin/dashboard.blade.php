@@ -100,7 +100,7 @@
         <div class="lg:col-span-2 glass-card rounded-3xl p-6">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-bold text-white">Recent Activity</h2>
-                <a href="#" class="text-amber-500 font-bold hover:text-amber-400 text-sm">View All →</a>
+                <a href="{{ route('admin.activity.index') }}" class="text-amber-500 font-bold hover:text-amber-400 text-sm">View All →</a>
             </div>
             
             <div class="space-y-4">
@@ -174,7 +174,8 @@
                     <a href="{{ route('admin.users.index') }}" class="flex items-center justify-center p-3 rounded-xl bg-white/5 text-gray-300 font-bold text-sm hover:bg-white/10 transition border border-white/5">Manage Users</a>
                     <a href="{{ route('admin.agents.index') }}" class="flex items-center justify-center p-3 rounded-xl bg-white/5 text-gray-300 font-bold text-sm hover:bg-white/10 transition border border-white/5">Manage Agents</a>
                     <a href="{{ route('admin.agents.verification') }}" class="flex items-center justify-center p-3 rounded-xl bg-white/5 text-gray-300 font-bold text-sm hover:bg-white/10 transition border border-white/5">Verify Agents</a>
-                    <a href="{{ route('admin.settings.index') }}" class="flex items-center justify-center p-3 rounded-xl bg-white/5 text-gray-300 font-bold text-sm hover:bg-white/10 transition border border-white/5">Settings</a>
+                    <a href="{{ route('admin.support.index') }}" class="flex items-center justify-center p-3 rounded-xl bg-white/5 text-gray-300 font-bold text-sm hover:bg-white/10 transition border border-white/5">Support Inbox</a>
+                    <a href="{{ route('admin.settings.index') }}" class="col-span-2 flex items-center justify-center p-3 rounded-xl bg-white/5 text-gray-300 font-bold text-sm hover:bg-white/10 transition border border-white/5">Settings</a>
                 </div>
         </div>
     </div>

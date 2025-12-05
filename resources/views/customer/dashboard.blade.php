@@ -275,25 +275,25 @@
 
     <!-- Quick Actions -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <a href="#" class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition flex flex-col items-center justify-center gap-2 group">
+        <a href="{{ route('customer.line-requests.create') }}" class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition flex flex-col items-center justify-center gap-2 group">
             <div class="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 group-hover:scale-110 transition">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             </div>
             <span class="text-white font-bold text-sm">Omba Laini</span>
         </a>
-        <a href="#" class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition flex flex-col items-center justify-center gap-2 group">
+        <a href="{{ route('customer.line-requests.index') }}" class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition flex flex-col items-center justify-center gap-2 group">
             <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 group-hover:scale-110 transition">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
             </div>
             <span class="text-white font-bold text-sm">Historia</span>
         </a>
-        <a href="#" class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition flex flex-col items-center justify-center gap-2 group">
+        <a href="{{ route('customer.payments.index') }}" class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition flex flex-col items-center justify-center gap-2 group">
             <div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 group-hover:scale-110 transition">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
             </div>
             <span class="text-white font-bold text-sm">Malipo</span>
         </a>
-        <a href="#" class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition flex flex-col items-center justify-center gap-2 group">
+        <a href="{{ route('customer.support.index') }}" class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition flex flex-col items-center justify-center gap-2 group">
             <div class="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500 group-hover:scale-110 transition">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
             </div>

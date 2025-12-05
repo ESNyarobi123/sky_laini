@@ -76,4 +76,9 @@ class User extends Authenticatable
     {
         return $this->role === UserRole::Admin;
     }
+
+    public function tickets(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SupportTicket::class);
+    }
 }
