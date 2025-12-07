@@ -78,4 +78,14 @@ class LineRequest extends Model
     {
         return $this->hasMany(SystemNotification::class);
     }
+
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class);
+    }
+
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
+    }
 }

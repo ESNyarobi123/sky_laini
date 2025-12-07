@@ -4,11 +4,29 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
 use App\Http\Controllers\Agent\DashboardController as AgentDashboard;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\LeaderboardController;
+use App\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
+
+// Leaderboard (Public)
+Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
+
+// Language Switch
+Route::post('/language', function (\Illuminate\Http\Request $request) {
+    $locale = $request->input('locale', 'sw');
+    if (in_array($locale, ['sw', 'en'])) {
+        session(['locale' => $locale]);
+        if (auth()->check()) {
+            auth()->user()->update(['locale' => $locale]);
+        }
+    }
+    return back();
+})->name('language.switch');
 
 // Authentication Routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -36,6 +54,17 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
     Route::get('/payments', [\App\Http\Controllers\Customer\PaymentController::class, 'index'])->name('payments.index');
     Route::post('/requests/{lineRequest}/pay', [\App\Http\Controllers\PaymentController::class, 'initiate'])->name('requests.pay');
     Route::get('/requests/{lineRequest}/payment-status', [\App\Http\Controllers\PaymentController::class, 'checkStatus'])->name('requests.payment-status');
+
+    // Invoice Routes
+    Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+    Route::get('/invoices/{invoice}/download', [InvoiceController::class, 'download'])->name('invoices.download');
+    Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('invoices.print');
+
+    // Chat Routes
+    Route::get('/chat', [\App\Http\Controllers\Customer\ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/{lineRequest}', [\App\Http\Controllers\Customer\ChatController::class, 'show'])->name('chat.show');
+    Route::post('/chat/{lineRequest}', [\App\Http\Controllers\Customer\ChatController::class, 'store'])->name('chat.store');
 
     // Support Routes
     Route::get('/support', [\App\Http\Controllers\Customer\SupportController::class, 'index'])->name('support.index');
@@ -65,6 +94,15 @@ Route::middleware(['auth'])->prefix('agent')->name('agent.')->group(function () 
     // Documents
     Route::post('/documents/upload', [\App\Http\Controllers\Agent\DocumentController::class, 'upload'])->name('documents.upload');
 
+    // Chat Routes
+    Route::get('/chat', [\App\Http\Controllers\Agent\ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/{lineRequest}', [\App\Http\Controllers\Agent\ChatController::class, 'show'])->name('chat.show');
+    Route::post('/chat/{lineRequest}', [\App\Http\Controllers\Agent\ChatController::class, 'store'])->name('chat.store');
+
+    // Working Hours
+    Route::get('/working-hours', [\App\Http\Controllers\Agent\WorkingHoursController::class, 'index'])->name('working-hours.index');
+    Route::post('/working-hours', [\App\Http\Controllers\Agent\WorkingHoursController::class, 'update'])->name('working-hours.update');
+
     // Support
     Route::get('/support', [\App\Http\Controllers\Agent\SupportController::class, 'index'])->name('support.index');
     Route::post('/support', [\App\Http\Controllers\Agent\SupportController::class, 'store'])->name('support.store');
@@ -74,6 +112,10 @@ Route::middleware(['auth'])->prefix('agent')->name('agent.')->group(function () 
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
     
+    // Analytics
+    Route::get('/analytics', [\App\Http\Controllers\Admin\AnalyticsController::class, 'index'])->name('analytics.index');
+    Route::get('/analytics/data', [\App\Http\Controllers\Admin\AnalyticsController::class, 'data'])->name('analytics.data');
+
     // Settings
     Route::get('/settings', [\App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings', [\App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('settings.update');
@@ -115,3 +157,4 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::resource('tickets', \App\Http\Controllers\Admin\TicketController::class)->only(['index', 'show']);
     Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\Admin\TicketController::class, 'reply'])->name('tickets.reply');
 });
+
