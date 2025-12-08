@@ -40,4 +40,10 @@ return [
         'base_url' => env('ZENOPAY_BASE_URL', 'https://zenoapi.com'),
     ],
 
+    'support' => [
+        'whatsapp' => env('SUPPORT_WHATSAPP', '+255712345678'),
+        'phone' => env('SUPPORT_PHONE', '+255712345678'),
+        'email' => env('SUPPORT_EMAIL', 'support@skylaini.co.tz'),
+    ],
+
 ];

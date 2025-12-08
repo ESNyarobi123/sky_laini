@@ -16,7 +16,7 @@ class SupportTicket extends Model
         'message',
         'status',
         'priority',
-        'category', // 'general', 'refund', 'complaint'
+        'category', // 'general', 'refund', 'complaint', 'chat'
         'related_request_id', // Optional, for refunds
     ];
 

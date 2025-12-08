@@ -83,4 +83,25 @@ class SupportController extends Controller
 
         return response()->json($message, 201);
     }
+
+    /**
+     * Close a ticket.
+     */
+    public function close(Request $request, SupportTicket $ticket): JsonResponse
+    {
+        if ($ticket->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($ticket->status === 'closed') {
+            return response()->json(['message' => 'Ticket is already closed'], 400);
+        }
+
+        $ticket->update(['status' => 'closed']);
+
+        return response()->json([
+            'message' => 'Ticket closed successfully',
+            'ticket' => $ticket->fresh(),
+        ]);
+    }
 }

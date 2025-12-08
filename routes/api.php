@@ -71,6 +71,100 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/tickets', [SupportController::class, 'store']);
         Route::get('/tickets/{ticket}', [SupportController::class, 'show']);
         Route::post('/tickets/{ticket}/reply', [SupportController::class, 'reply']);
+        Route::post('/tickets/{ticket}/close', [SupportController::class, 'close']);
+        
+        // Get support contact info (WhatsApp, Phone, Email)
+        Route::get('/contact', function () {
+            return response()->json([
+                'whatsapp' => [
+                    'number' => config('services.support.whatsapp', '+255712345678'),
+                    'url' => 'https://wa.me/' . preg_replace('/[^0-9]/', '', config('services.support.whatsapp', '255712345678')),
+                    'message' => 'Habari, nahitaji msaada kuhusu Sky Laini.',
+                    'full_url' => 'https://wa.me/' . preg_replace('/[^0-9]/', '', config('services.support.whatsapp', '255712345678')) . '?text=' . urlencode('Habari, nahitaji msaada kuhusu Sky Laini.'),
+                ],
+                'phone' => config('services.support.phone', '+255712345678'),
+                'email' => config('services.support.email', 'support@skylaini.co.tz'),
+                'working_hours' => [
+                    'weekdays' => '08:00 - 18:00',
+                    'weekends' => '09:00 - 15:00',
+                ],
+            ]);
+        });
+        
+        // Admin chat (for direct messaging with support)
+        Route::prefix('chat')->group(function () {
+            Route::get('/messages', function (Request $request) {
+                // Get or create admin support ticket for chat
+                $ticket = \App\Models\SupportTicket::firstOrCreate(
+                    [
+                        'user_id' => $request->user()->id,
+                        'category' => 'chat',
+                        'status' => 'open',
+                    ],
+                    [
+                        'subject' => 'Live Chat Support',
+                        'message' => 'Started live chat session',
+                    ]
+                );
+                
+                $messages = $ticket->messages()
+                    ->with('user:id,name,role')
+                    ->orderBy('created_at', 'asc')
+                    ->get()
+                    ->map(function ($msg) use ($request) {
+                        return [
+                            'id' => $msg->id,
+                            'message' => $msg->message,
+                            'is_mine' => $msg->user_id === $request->user()->id,
+                            'sender_name' => $msg->user?->name ?? 'Support',
+                            'is_admin' => $msg->user?->role?->value === 'admin',
+                            'created_at' => $msg->created_at->diffForHumans(),
+                            'timestamp' => $msg->created_at->toIso8601String(),
+                        ];
+                    });
+                
+                return response()->json([
+                    'ticket_id' => $ticket->id,
+                    'messages' => $messages,
+                ]);
+            });
+            
+            Route::post('/send', function (Request $request) {
+                $request->validate([
+                    'message' => 'required|string|max:1000',
+                ]);
+                
+                // Get or create admin support ticket for chat
+                $ticket = \App\Models\SupportTicket::firstOrCreate(
+                    [
+                        'user_id' => $request->user()->id,
+                        'category' => 'chat',
+                        'status' => 'open',
+                    ],
+                    [
+                        'subject' => 'Live Chat Support',
+                        'message' => $request->message,
+                    ]
+                );
+                
+                $message = $ticket->messages()->create([
+                    'user_id' => $request->user()->id,
+                    'message' => $request->message,
+                ]);
+                
+                // Update ticket to show activity
+                $ticket->touch();
+                
+                return response()->json([
+                    'id' => $message->id,
+                    'message' => $message->message,
+                    'is_mine' => true,
+                    'sender_name' => $request->user()->name,
+                    'created_at' => $message->created_at->diffForHumans(),
+                    'timestamp' => $message->created_at->toIso8601String(),
+                ], 201);
+            });
+        });
     });
 
     // Customer routes
@@ -78,6 +172,61 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [CustomerController::class, 'profile']);
         Route::put('/profile', [CustomerController::class, 'updateProfile']);
         Route::post('/location', [CustomerController::class, 'updateLocation']);
+    });
+
+    // Nearby Agents - Get all agents with online/offline status for map
+    Route::get('/agents/nearby', function (Request $request) {
+        $customer = $request->user()->customer;
+        
+        // Get customer location if available
+        $customerLat = $customer?->current_latitude ?? null;
+        $customerLng = $customer?->current_longitude ?? null;
+        
+        // Get all verified agents with their locations
+        $agents = \App\Models\Agent::where('is_verified', true)
+            ->whereNotNull('current_latitude')
+            ->whereNotNull('current_longitude')
+            ->with('user:id,name')
+            ->get(['id', 'user_id', 'current_latitude', 'current_longitude', 'is_online', 'phone', 'rating', 'specialization']);
+        
+        // Calculate distance if customer location is available
+        $agentsWithDistance = $agents->map(function ($agent) use ($customerLat, $customerLng) {
+            $agentData = [
+                'id' => $agent->id,
+                'name' => $agent->user?->name ?? 'Unknown',
+                'phone' => $agent->phone,
+                'latitude' => $agent->current_latitude,
+                'longitude' => $agent->current_longitude,
+                'is_online' => $agent->is_online,
+                'rating' => $agent->rating,
+                'specialization' => $agent->specialization,
+            ];
+            
+            // Calculate distance if customer location is available
+            if ($customerLat && $customerLng) {
+                $distance = \App\Services\LocationService::calculateDistanceStatic(
+                    $customerLat,
+                    $customerLng,
+                    $agent->current_latitude,
+                    $agent->current_longitude
+                );
+                $agentData['distance_km'] = round($distance, 2);
+            }
+            
+            return $agentData;
+        });
+        
+        // Separate into online and offline
+        $onlineAgents = $agentsWithDistance->where('is_online', true)->values();
+        $offlineAgents = $agentsWithDistance->where('is_online', false)->values();
+        
+        return response()->json([
+            'online' => $onlineAgents,
+            'offline' => $offlineAgents,
+            'total_online' => $onlineAgents->count(),
+            'total_offline' => $offlineAgents->count(),
+            'all' => $agentsWithDistance->values(),
+        ]);
     });
 
     // Agent routes
@@ -146,6 +295,97 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/requests/{lineRequest}/release', [\App\Http\Controllers\Agent\RequestActionController::class, 'release']);
         Route::post('/requests/{lineRequest}/retry-payment', [\App\Http\Controllers\Agent\RequestActionController::class, 'retryPayment']);
         Route::get('/requests/{lineRequest}/payment-status', [PaymentController::class, 'checkStatus']);
+        
+        // Full tracking data for agent (with payment check, directions, distance)
+        Route::get('/requests/{lineRequest}/tracking', function (Request $request, \App\Models\LineRequest $lineRequest) {
+            $agent = $request->user()->agent;
+            if (!$agent || $lineRequest->agent_id !== $agent->id) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+            
+            $lineRequest->load(['customer.user']);
+            
+            // Check if paid
+            $isPaid = $lineRequest->payment_status === 'paid';
+            $canNavigate = $isPaid && in_array($lineRequest->status->value ?? $lineRequest->status, ['accepted', 'in_progress']);
+            
+            // Get locations
+            $agentLat = $agent->current_latitude;
+            $agentLng = $agent->current_longitude;
+            $customerLat = $lineRequest->customer_latitude;
+            $customerLng = $lineRequest->customer_longitude;
+            
+            // Calculate distance if both locations available
+            $distance = null;
+            $estimatedMinutes = null;
+            if ($agentLat && $agentLng && $customerLat && $customerLng) {
+                $distance = \App\Services\LocationService::calculateDistanceStatic(
+                    $agentLat, $agentLng, $customerLat, $customerLng
+                );
+                $estimatedMinutes = round(($distance / 30) * 60); // 30 km/h average
+            }
+            
+            // Build navigation URLs
+            $origin = "{$agentLat},{$agentLng}";
+            $destination = "{$customerLat},{$customerLng}";
+            
+            $response = [
+                'request_id' => $lineRequest->id,
+                'request_number' => $lineRequest->request_number,
+                'status' => $lineRequest->status->value ?? $lineRequest->status,
+                'line_type' => $lineRequest->line_type->value ?? $lineRequest->line_type,
+                
+                // Payment info
+                'payment' => [
+                    'status' => $lineRequest->payment_status ?? 'pending',
+                    'is_paid' => $isPaid,
+                    'confirmation_code' => $isPaid ? $lineRequest->confirmation_code : null,
+                    'amount' => $lineRequest->service_fee ?? 1000,
+                ],
+                
+                // Can navigate (only after payment)
+                'can_navigate' => $canNavigate,
+                
+                // Customer info
+                'customer' => [
+                    'name' => $lineRequest->customer?->user?->name ?? 'Customer',
+                    'phone' => $lineRequest->customer_phone,
+                    'address' => $lineRequest->customer_address,
+                    'latitude' => $customerLat,
+                    'longitude' => $customerLng,
+                ],
+                
+                // Agent current position
+                'agent_location' => [
+                    'latitude' => $agentLat,
+                    'longitude' => $agentLng,
+                ],
+            ];
+            
+            // Add navigation data only if paid
+            if ($canNavigate) {
+                $response['tracking'] = [
+                    'distance_km' => $distance ? round($distance, 2) : null,
+                    'estimated_minutes' => $estimatedMinutes,
+                    'estimated_arrival' => $estimatedMinutes ? now()->addMinutes($estimatedMinutes)->format('H:i') : null,
+                ];
+                
+                $response['navigation'] = [
+                    'google_maps_url' => "https://www.google.com/maps/dir/{$origin}/{$destination}",
+                    'directions_api_url' => "https://www.google.com/maps/dir/?api=1&origin={$origin}&destination={$destination}&travelmode=driving",
+                    'android_intent' => "google.navigation:q={$destination}",
+                    'ios_intent' => "comgooglemaps://?daddr={$destination}&directionsmode=driving",
+                    'waze_url' => "https://waze.com/ul?ll={$customerLat},{$customerLng}&navigate=yes",
+                ];
+                
+                $response['route'] = [
+                    'start' => ['latitude' => $agentLat, 'longitude' => $agentLng],
+                    'end' => ['latitude' => $customerLat, 'longitude' => $customerLng],
+                ];
+            }
+            
+            return response()->json($response);
+        });
 
         // Dashboard stats
         Route::get('/dashboard', function (Request $request) {
@@ -242,6 +482,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Customer tracking routes
     Route::prefix('tracking')->group(function () {
         Route::get('/{lineRequest}', [\App\Http\Controllers\Customer\TrackingController::class, 'getAgentLocation']);
+        Route::get('/{lineRequest}/directions', [\App\Http\Controllers\Customer\TrackingController::class, 'getTrackingWithDirections']);
         Route::post('/location', [\App\Http\Controllers\Customer\TrackingController::class, 'updateCustomerLocation']);
     });
 

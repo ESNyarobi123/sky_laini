@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LineRequest;
 use App\RequestStatus;
+use App\Services\InvoiceService;
 use App\Services\ZenoPayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -11,10 +12,12 @@ use Illuminate\Support\Str;
 class PaymentController extends Controller
 {
     protected $zenoPay;
+    protected $invoiceService;
 
-    public function __construct(ZenoPayService $zenoPay)
+    public function __construct(ZenoPayService $zenoPay, InvoiceService $invoiceService)
     {
         $this->zenoPay = $zenoPay;
+        $this->invoiceService = $invoiceService;
     }
 
     public function initiate(Request $request, LineRequest $lineRequest)
@@ -103,6 +106,20 @@ class PaymentController extends Controller
                         'confirmation_code' => $code
                     ]);
                     
+                    // Auto-generate Invoice
+                    try {
+                        $invoice = $this->invoiceService->generateInvoice($lineRequest);
+                        \Log::info('Invoice auto-generated', [
+                            'invoice_id' => $invoice->id,
+                            'invoice_number' => $invoice->invoice_number,
+                        ]);
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to auto-generate invoice', [
+                            'line_request_id' => $lineRequest->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                    
                     \Log::info('Payment marked as paid', [
                         'line_request_id' => $lineRequest->id,
                         'confirmation_code' => $code,
@@ -185,7 +202,34 @@ class PaymentController extends Controller
                 $agent->save();
             }
 
-            return response()->json(['message' => 'Job completed successfully!']);
+            // Ensure invoice exists (may have been created on payment)
+            $invoice = \App\Models\Invoice::where('line_request_id', $lineRequest->id)->first();
+            if (!$invoice) {
+                try {
+                    $invoice = $this->invoiceService->generateInvoice($lineRequest);
+                } catch (\Exception $e) {
+                    \Log::error('Failed to generate invoice on job completion', [
+                        'line_request_id' => $lineRequest->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            \Log::info('Job completed successfully', [
+                'line_request_id' => $lineRequest->id,
+                'agent_id' => $agent?->id,
+                'earnings' => $earnings,
+                'invoice_id' => $invoice?->id,
+            ]);
+
+            return response()->json([
+                'message' => 'Job completed successfully!',
+                'earnings' => $earnings,
+                'invoice' => $invoice ? [
+                    'id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                ] : null,
+            ]);
         }
 
         return response()->json(['message' => 'Invalid code'], 400);
