@@ -51,16 +51,48 @@ class PaymentController extends Controller
 
     public function checkStatus(Request $request, LineRequest $lineRequest)
     {
-        if (!$lineRequest->payment_order_id) {
-            return response()->json(['message' => 'No payment found'], 404);
+        // Authorization: Check if user is either the customer or the assigned agent
+        $user = $request->user();
+        $isCustomer = $user->customer && $lineRequest->customer_id === $user->customer->id;
+        $isAgent = $user->agent && $lineRequest->agent_id === $user->agent->id;
+        
+        if (!$isCustomer && !$isAgent) {
+            return response()->json([
+                'message' => 'Unauthorized - You are not authorized to check this payment status'
+            ], 403);
         }
 
+        // Check if payment_order_id exists
+        if (!$lineRequest->payment_order_id) {
+            \Log::warning('Payment status check failed: No payment_order_id', [
+                'line_request_id' => $lineRequest->id,
+                'payment_status' => $lineRequest->payment_status,
+                'user_id' => $user->id,
+            ]);
+            
+            return response()->json([
+                'status' => $lineRequest->payment_status ?? 'pending',
+                'payment_status' => $lineRequest->payment_status ?? 'pending',
+                'message' => 'No payment order found'
+            ]);
+        }
+
+        // Check ZenoPay API
         $result = $this->zenoPay->checkStatus($lineRequest->payment_order_id);
+
+        // Log the API response for debugging
+        \Log::info('ZenoPay status check response', [
+            'order_id' => $lineRequest->payment_order_id,
+            'line_request_id' => $lineRequest->id,
+            'result' => $result,
+        ]);
 
         if ($result['success']) {
             $paymentData = $result['data'];
+            $paymentStatus = strtoupper($paymentData['payment_status'] ?? '');
             
-            if ($paymentData['payment_status'] === 'COMPLETED') { // Verify exact status string from ZenoPay docs/response
+            // Check for completed status (case-insensitive)
+            if ($paymentStatus === 'COMPLETED' || $paymentStatus === 'SUCCESS' || $paymentStatus === 'PAID') {
                 
                 if ($lineRequest->payment_status !== 'paid') {
                     // Generate Completion Code
@@ -70,16 +102,42 @@ class PaymentController extends Controller
                         'payment_status' => 'paid',
                         'confirmation_code' => $code
                     ]);
+                    
+                    \Log::info('Payment marked as paid', [
+                        'line_request_id' => $lineRequest->id,
+                        'confirmation_code' => $code,
+                    ]);
                 }
 
                 return response()->json([
                     'status' => 'paid',
-                    'confirmation_code' => $lineRequest->confirmation_code
+                    'payment_status' => 'paid',
+                    'confirmation_code' => $lineRequest->fresh()->confirmation_code,
+                    'message' => 'Payment completed successfully'
                 ]);
             }
+            
+            // Return the actual status from ZenoPay
+            return response()->json([
+                'status' => 'pending',
+                'payment_status' => 'pending',
+                'zenopay_status' => $paymentData['payment_status'] ?? 'unknown',
+                'message' => 'Payment is still being processed'
+            ]);
         }
 
-        return response()->json(['status' => 'pending']);
+        // API call failed - return current local status
+        \Log::warning('ZenoPay API check failed', [
+            'order_id' => $lineRequest->payment_order_id,
+            'error' => $result['message'] ?? 'Unknown error',
+        ]);
+        
+        return response()->json([
+            'status' => $lineRequest->payment_status ?? 'pending',
+            'payment_status' => $lineRequest->payment_status ?? 'pending',
+            'message' => $result['message'] ?? 'Unable to check payment status',
+            'error' => true
+        ]);
     }
 
     public function completeJob(Request $request, LineRequest $lineRequest)
