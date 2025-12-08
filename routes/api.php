@@ -145,6 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/requests/{lineRequest}/reject', [\App\Http\Controllers\Agent\RequestActionController::class, 'reject']);
         Route::post('/requests/{lineRequest}/release', [\App\Http\Controllers\Agent\RequestActionController::class, 'release']);
         Route::post('/requests/{lineRequest}/retry-payment', [\App\Http\Controllers\Agent\RequestActionController::class, 'retryPayment']);
+        Route::get('/requests/{lineRequest}/payment-status', [PaymentController::class, 'checkStatus']);
 
         // Dashboard stats
         Route::get('/dashboard', function (Request $request) {
