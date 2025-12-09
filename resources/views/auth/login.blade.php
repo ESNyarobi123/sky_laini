@@ -94,9 +94,7 @@
                 <div>
                     <div class="flex justify-between items-center mb-2">
                         <label for="password" class="block text-sm font-bold text-gray-300">Nenosiri</label>
-                        @if (Route::has('password.request'))
-                            <a href="{{ route('password.request') }}" class="text-xs font-bold text-amber-500 hover:text-amber-400">Umesahau nenosiri?</a>
-                        @endif
+                        <a href="{{ route('password.forgot') }}" class="text-xs font-bold text-amber-500 hover:text-amber-400">Umesahau nenosiri?</a>
                     </div>
                     <input id="password" type="password" name="password" required 
                         class="input-field w-full px-5 py-4 rounded-xl outline-none placeholder-gray-600 font-medium"

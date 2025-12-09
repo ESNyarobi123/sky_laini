@@ -7,12 +7,14 @@ use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\LineRequestController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SupportController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\WalletController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Agent\WorkingHoursController;
+use App\Http\Controllers\Api\Auth\ForgotPasswordController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -538,29 +540,25 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json(['message' => 'Password updated successfully']);
     });
 
-    // User profile
-    Route::get('/profile', function (Request $request) {
-        $user = $request->user();
-        $user->load(['customer', 'agent.wallet']);
-
-        return response()->json([
-            'user' => $user,
-            'role' => $user->role->value ?? 'customer',
-        ]);
-    });
-
-    Route::put('/profile', function (Request $request) {
-        $validated = $request->validate([
-            'name' => 'nullable|string|max:255',
-            'phone' => 'nullable|string',
-        ]);
-
-        $request->user()->update($validated);
-
-        return response()->json([
-            'user' => $request->user()->fresh(),
-            'message' => 'Profile updated successfully',
-        ]);
+    // User profile management routes
+    Route::prefix('profile')->group(function () {
+        // Get current user profile
+        Route::get('/', [ProfileController::class, 'show']);
+        
+        // Update profile (name, phone)
+        Route::put('/', [ProfileController::class, 'update']);
+        
+        // Update name only
+        Route::put('/name', [ProfileController::class, 'updateName']);
+        
+        // Update password
+        Route::put('/password', [ProfileController::class, 'updatePassword']);
+        
+        // Upload profile picture
+        Route::post('/picture', [ProfileController::class, 'uploadProfilePicture']);
+        
+        // Delete profile picture
+        Route::delete('/picture', [ProfileController::class, 'deleteProfilePicture']);
     });
 
     // Invoice print
@@ -585,17 +583,8 @@ Route::get('/app/info', function () {
 });
 
 // Forgot password / Reset password (public)
-Route::post('/forgot-password', function (Request $request) {
-    $request->validate(['email' => 'required|email']);
-
-    $user = \App\Models\User::where('email', $request->email)->first();
-
-    if (!$user) {
-        return response()->json(['message' => 'If this email exists, a reset link has been sent.']);
-    }
-
-    // In a real app, you'd send an email with a reset token
-    // For now, we just return a success message
-    return response()->json(['message' => 'If this email exists, a reset link has been sent.']);
-});
+// Password Reset (OTP)
+Route::post('/password/email', [ForgotPasswordController::class, 'sendOtp']);
+Route::post('/password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
+Route::post('/password/reset', [ForgotPasswordController::class, 'resetPassword']);
 

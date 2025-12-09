@@ -36,6 +36,17 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
 Route::post('/register', [RegisterController::class, 'register']);
 
+// Password Reset Routes
+Route::get('/forgot-password', function () {
+    return view('auth.forgot-password');
+})->name('password.forgot');
+
+Route::post('/forgot-password', [\App\Http\Controllers\Api\Auth\ForgotPasswordController::class, 'sendOtp'])->name('password.email');
+Route::get('/reset-password', function () {
+    return view('auth.reset-password');
+})->name('password.reset.form');
+Route::post('/reset-password', [\App\Http\Controllers\Api\Auth\ForgotPasswordController::class, 'resetPassword'])->name('password.update');
+
 // Customer Dashboard
 Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(function () {
     Route::get('/dashboard', [CustomerDashboard::class, 'index'])->name('dashboard');
