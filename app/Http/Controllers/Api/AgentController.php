@@ -15,18 +15,48 @@ class AgentController extends Controller
     public function __construct(
         private ZenoPayService $zenoPayService
     ) {}
+
+    /**
+     * Get or create agent profile (fallback for users registered before fix).
+     */
+    private function getOrCreateAgent(Request $request): ?\App\Models\Agent
+    {
+        $user = $request->user();
+        $agent = $user->agent;
+
+        // Auto-create agent profile if missing (for users registered before fix)
+        if (!$agent && $user->isAgent()) {
+            $agent = \App\Models\Agent::create([
+                'user_id' => $user->id,
+                'phone' => $user->phone,
+                'nida_number' => 'TEMP-' . uniqid(),
+                'is_verified' => false,
+                'is_online' => false,
+            ]);
+
+            // Create Wallet for agent
+            \App\Models\Wallet::create([
+                'agent_id' => $agent->id,
+                'balance' => 0,
+                'pending_balance' => 0,
+            ]);
+        }
+
+        return $agent;
+    }
+
     /**
      * Get agent profile.
      */
     public function profile(Request $request): JsonResponse
     {
-        $agent = $request->user()->agent;
+        $agent = $this->getOrCreateAgent($request);
 
         if (!$agent) {
-            return response()->json(['message' => 'Agent profile not found'], 404);
+            return response()->json(['message' => 'Agent profile not found. Please ensure you are registered as an agent.'], 404);
         }
 
-        return response()->json($agent->load('user'));
+        return response()->json($agent->load(['user', 'wallet', 'documents']));
     }
 
     /**
@@ -39,10 +69,10 @@ class AgentController extends Controller
             'is_available' => 'boolean',
         ]);
 
-        $agent = $request->user()->agent;
+        $agent = $this->getOrCreateAgent($request);
 
         if (!$agent) {
-            return response()->json(['message' => 'Agent profile not found'], 404);
+            return response()->json(['message' => 'Agent profile not found. Please ensure you are registered as an agent.'], 404);
         }
 
         $agent->update($validated);
@@ -60,10 +90,10 @@ class AgentController extends Controller
             'longitude' => 'required|numeric',
         ]);
 
-        $agent = $request->user()->agent;
+        $agent = $this->getOrCreateAgent($request);
 
         if (!$agent) {
-            return response()->json(['message' => 'Agent profile not found'], 404);
+            return response()->json(['message' => 'Agent profile not found. Please ensure you are registered as an agent.'], 404);
         }
 
         $agent->update([
@@ -80,10 +110,10 @@ class AgentController extends Controller
      */
     public function requests(Request $request): JsonResponse
     {
-        $agent = $request->user()->agent;
+        $agent = $this->getOrCreateAgent($request);
 
         if (!$agent) {
-            return response()->json(['message' => 'Agent profile not found'], 404);
+            return response()->json(['message' => 'Agent profile not found. Please ensure you are registered as an agent.'], 404);
         }
 
         $requests = $agent->lineRequests()
@@ -100,7 +130,8 @@ class AgentController extends Controller
     public function showRequest(Request $request, LineRequest $lineRequest): JsonResponse
     {
         // Ensure the request belongs to the authenticated agent
-        if ($lineRequest->agent_id !== $request->user()->agent->id) {
+        $agent = $this->getOrCreateAgent($request);
+        if (!$agent || $lineRequest->agent_id !== $agent->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -128,7 +159,8 @@ class AgentController extends Controller
         // For now, assuming direct assignment or pre-check.
         // Actually, usually agents accept pending requests.
         // If the request is already assigned to this agent:
-        if ($lineRequest->agent_id !== $request->user()->agent->id) {
+        $agent = $this->getOrCreateAgent($request);
+        if (!$agent || $lineRequest->agent_id !== $agent->id) {
              return response()->json(['message' => 'Unauthorized'], 403);
         }
 

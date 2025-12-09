@@ -38,6 +38,22 @@ class AuthController extends Controller
             $user->customer()->create([
                 'phone' => $validated['phone'],
             ]);
+        } elseif ($user->isAgent()) {
+            // Create Agent profile
+            $agent = \App\Models\Agent::create([
+                'user_id' => $user->id,
+                'phone' => $validated['phone'],
+                'nida_number' => 'TEMP-' . uniqid(),
+                'is_verified' => false,
+                'is_online' => false,
+            ]);
+
+            // Create Wallet for agent
+            \App\Models\Wallet::create([
+                'agent_id' => $agent->id,
+                'balance' => 0,
+                'pending_balance' => 0,
+            ]);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;

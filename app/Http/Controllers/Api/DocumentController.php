@@ -20,10 +20,29 @@ class DocumentController extends Controller
             'passport_photo' => 'required|image|max:5120',
         ]);
 
-        $agent = $request->user()->agent;
+        $user = $request->user();
+        $agent = $user->agent;
+
+        // Auto-create agent profile if missing (for users registered before fix)
+        if (!$agent && $user->isAgent()) {
+            $agent = \App\Models\Agent::create([
+                'user_id' => $user->id,
+                'phone' => $user->phone,
+                'nida_number' => 'TEMP-' . uniqid(),
+                'is_verified' => false,
+                'is_online' => false,
+            ]);
+
+            // Create Wallet for agent
+            \App\Models\Wallet::create([
+                'agent_id' => $agent->id,
+                'balance' => 0,
+                'pending_balance' => 0,
+            ]);
+        }
 
         if (!$agent) {
-            return response()->json(['message' => 'Agent profile not found'], 404);
+            return response()->json(['message' => 'Agent profile not found. Please ensure you are registered as an agent.'], 404);
         }
 
         // Store Files
@@ -60,14 +79,38 @@ class DocumentController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $agent = $request->user()->agent;
+        $user = $request->user();
+        $agent = $user->agent;
         
+        // Auto-create agent profile if missing (for users registered before fix)
+        if (!$agent && $user->isAgent()) {
+            $agent = \App\Models\Agent::create([
+                'user_id' => $user->id,
+                'phone' => $user->phone,
+                'nida_number' => 'TEMP-' . uniqid(),
+                'is_verified' => false,
+                'is_online' => false,
+            ]);
+
+            // Create Wallet for agent
+            \App\Models\Wallet::create([
+                'agent_id' => $agent->id,
+                'balance' => 0,
+                'pending_balance' => 0,
+            ]);
+        }
+
         if (!$agent) {
-            return response()->json(['message' => 'Agent profile not found'], 404);
+            return response()->json(['message' => 'Agent profile not found. Please ensure you are registered as an agent.'], 404);
         }
 
         $documents = $agent->documents;
 
-        return response()->json($documents);
+        return response()->json([
+            'agent_id' => $agent->id,
+            'is_verified' => $agent->is_verified,
+            'nida_number' => $agent->nida_number,
+            'documents' => $documents,
+        ]);
     }
 }
