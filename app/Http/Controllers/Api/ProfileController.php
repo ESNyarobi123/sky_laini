@@ -116,15 +116,33 @@ class ProfileController extends Controller
         $file = $request->file('profile_picture');
         $filename = 'profile_' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
         
-        $file->storeAs('profile_pictures', $filename, 'public');
+        $stored = $file->storeAs('profile_pictures', $filename, 'public');
+
+        if (!$stored) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Imeshindikana kupakia picha. Tafadhali jaribu tena.',
+            ], 500);
+        }
 
         // Update user
         $user->update(['profile_picture' => $filename]);
+        $user->refresh(); // Refresh to get updated data
+
+        $profilePictureUrl = url('storage/profile_pictures/' . $filename);
 
         return response()->json([
             'success' => true,
             'message' => 'Picha ya wasifu imepakiwa kikamilifu',
-            'profile_picture_url' => url('storage/profile_pictures/' . $filename),
+            'profile_picture_url' => $profilePictureUrl,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'profile_picture' => $profilePictureUrl,
+                'role' => $user->role->value ?? 'customer',
+            ],
         ]);
     }
 

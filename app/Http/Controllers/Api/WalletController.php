@@ -60,12 +60,11 @@ class WalletController extends Controller
         // Create withdrawal request
         $withdrawal = Withdrawal::create([
             'agent_id' => $agent->id,
+            'wallet_id' => $agent->wallet->id,
             'amount' => $validated['amount'],
-            'method' => $validated['method'],
-            'account_details' => json_encode([
-                'number' => $validated['account_number'],
-                'name' => $validated['account_name'],
-            ]),
+            'payment_method' => $validated['method'],
+            'account_number' => $validated['account_number'],
+            'account_name' => $validated['account_name'],
             'status' => 'pending',
         ]);
 

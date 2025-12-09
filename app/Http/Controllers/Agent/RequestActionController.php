@@ -59,7 +59,8 @@ class RequestActionController extends Controller
         if ($result['success']) {
             $lineRequest->update([
                 'payment_order_id' => $result['order_id'],
-                'payment_status' => 'pending'
+                'payment_status' => 'pending',
+                'service_fee' => $amount, // Tambua bei ya huduma
             ]);
             
             return response()->json([
@@ -164,7 +165,8 @@ class RequestActionController extends Controller
         if ($result['success']) {
             $lineRequest->update([
                 'payment_order_id' => $result['order_id'],
-                'payment_status' => 'pending'
+                'payment_status' => 'pending',
+                'service_fee' => $amount, // Tambua bei ya huduma
             ]);
             
             return response()->json([
