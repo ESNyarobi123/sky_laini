@@ -80,6 +80,13 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
     // Support Routes
     Route::get('/support', [\App\Http\Controllers\Customer\SupportController::class, 'index'])->name('support.index');
     Route::post('/support', [\App\Http\Controllers\Customer\SupportController::class, 'store'])->name('support.store');
+
+    // Profile Routes
+    Route::get('/profile', [\App\Http\Controllers\Web\ProfileController::class, 'index'])->name('profile.index');
+    Route::put('/profile/name', [\App\Http\Controllers\Web\ProfileController::class, 'updateName'])->name('profile.name.update');
+    Route::put('/profile/password', [\App\Http\Controllers\Web\ProfileController::class, 'updatePassword'])->name('profile.password.update');
+    Route::post('/profile/picture', [\App\Http\Controllers\Web\ProfileController::class, 'uploadPicture'])->name('profile.picture.upload');
+    Route::delete('/profile/picture', [\App\Http\Controllers\Web\ProfileController::class, 'deletePicture'])->name('profile.picture.delete');
 });
 
 // Agent Dashboard
@@ -117,6 +124,14 @@ Route::middleware(['auth'])->prefix('agent')->name('agent.')->group(function () 
     // Support
     Route::get('/support', [\App\Http\Controllers\Agent\SupportController::class, 'index'])->name('support.index');
     Route::post('/support', [\App\Http\Controllers\Agent\SupportController::class, 'store'])->name('support.store');
+
+    // Profile Routes
+    Route::get('/profile', [\App\Http\Controllers\Web\ProfileController::class, 'index'])->name('profile.index');
+    Route::put('/profile/name', [\App\Http\Controllers\Web\ProfileController::class, 'updateName'])->name('profile.name.update');
+    Route::put('/profile/password', [\App\Http\Controllers\Web\ProfileController::class, 'updatePassword'])->name('profile.password.update');
+    Route::post('/profile/picture', [\App\Http\Controllers\Web\ProfileController::class, 'uploadPicture'])->name('profile.picture.upload');
+    Route::delete('/profile/picture', [\App\Http\Controllers\Web\ProfileController::class, 'deletePicture'])->name('profile.picture.delete');
+    Route::post('/profile/withdrawal', [\App\Http\Controllers\Web\ProfileController::class, 'requestWithdrawal'])->name('profile.withdrawal.request');
 });
 
 // Admin Dashboard

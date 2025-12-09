@@ -131,15 +131,22 @@
                         <span class="text-sm font-bold text-gray-300">System Operational</span>
                     </div>
                     
-                    <div class="flex items-center gap-3 pl-4 border-l border-white/10">
+                    @php
+                        $profileRoute = Auth::user()->isAgent() ? 'agent.profile.index' : (Auth::user()->isCustomer() ? 'customer.profile.index' : 'admin.dashboard');
+                    @endphp
+                    <a href="{{ route($profileRoute) }}" class="flex items-center gap-3 pl-4 border-l border-white/10 hover:opacity-80 transition">
                         <div class="text-right hidden md:block">
                             <div class="text-sm font-bold text-white">{{ Auth::user()->name }}</div>
                             <div class="text-xs text-amber-500 font-medium capitalize">{{ Auth::user()->role }}</div>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-black font-bold text-lg shadow-lg">
-                            {{ substr(Auth::user()->name, 0, 1) }}
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-black font-bold text-lg shadow-lg overflow-hidden">
+                            @if(Auth::user()->profile_picture)
+                                <img src="{{ url('storage/profile_pictures/' . Auth::user()->profile_picture) }}" alt="Profile" class="w-full h-full object-cover">
+                            @else
+                                {{ substr(Auth::user()->name, 0, 1) }}
+                            @endif
                         </div>
-                    </div>
+                    </a>
                 </div>
             </header>
             

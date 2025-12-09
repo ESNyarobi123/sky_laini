@@ -233,6 +233,83 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Rating Section (Completed Jobs) -->
+            @if($lineRequest->status->value === 'completed' && $lineRequest->agent)
+                @php
+                    $existingRating = \App\Models\Rating::where('line_request_id', $lineRequest->id)->first();
+                @endphp
+                
+                @if(!$existingRating)
+                <div class="glass-card rounded-3xl p-1 border border-amber-500/30 overflow-hidden">
+                    <div class="bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                            Mpe Wakala Rating
+                        </h3>
+                        
+                        <div class="text-center mb-6">
+                            <div class="flex items-center justify-center gap-3 mb-3">
+                                <div class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center text-black font-bold text-xl">
+                                    {{ substr($lineRequest->agent->user->name, 0, 1) }}
+                                </div>
+                                <div class="text-left">
+                                    <p class="text-white font-bold">{{ $lineRequest->agent->user->name }}</p>
+                                    <p class="text-gray-400 text-xs">Wakala wako</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form id="rating-form" onsubmit="submitRating(event)">
+                            <div class="mb-6">
+                                <p class="text-gray-400 text-sm text-center mb-4">Gusa nyota kumpa rating</p>
+                                <div class="flex justify-center gap-2" id="star-rating">
+                                    @for($i = 1; $i <= 5; $i++)
+                                    <button type="button" onclick="setRating({{ $i }})" class="star-btn transform transition hover:scale-125 focus:outline-none" data-value="{{ $i }}">
+                                        <svg class="w-10 h-10 text-gray-600 hover:text-amber-500 transition" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                        </svg>
+                                    </button>
+                                    @endfor
+                                </div>
+                                <input type="hidden" name="rating" id="rating-value" value="0">
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="text-gray-400 text-sm block mb-2">Maoni (si lazima)</label>
+                                <textarea name="review" id="review-text" rows="3" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition resize-none" placeholder="Andika maoni yako kuhusu huduma..."></textarea>
+                            </div>
+
+                            <button type="submit" id="submit-rating-btn" class="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-black font-bold shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                Tuma Rating
+                            </button>
+                            <p id="rating-msg" class="text-center text-sm mt-3 hidden"></p>
+                        </form>
+                    </div>
+                </div>
+                @else
+                <!-- Already Rated -->
+                <div class="glass-card rounded-3xl p-6 border border-green-500/30 bg-green-500/5">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-white font-bold">Umeshakadiri!</p>
+                            <div class="flex items-center gap-1 mt-1">
+                                @for($i = 1; $i <= 5; $i++)
+                                    <svg class="w-4 h-4 {{ $i <= $existingRating->rating ? 'text-amber-500' : 'text-gray-600' }}" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                @endfor
+                                <span class="text-gray-400 text-xs ml-2">{{ $existingRating->rating }}/5</span>
+                            </div>
+                            @if($existingRating->review)
+                            <p class="text-gray-400 text-xs mt-2 italic">"{{ $existingRating->review }}"</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @endif
+            @endif
         </div>
     </div>
 </div>
@@ -468,6 +545,81 @@
             }, 2000);
         }).catch(err => {
             console.error('Failed to copy: ', err);
+        });
+    }
+
+    // Rating Functions
+    let selectedRating = 0;
+
+    function setRating(value) {
+        selectedRating = value;
+        document.getElementById('rating-value').value = value;
+        
+        // Update star colors
+        document.querySelectorAll('.star-btn svg').forEach((star, index) => {
+            if (index < value) {
+                star.classList.remove('text-gray-600');
+                star.classList.add('text-amber-500');
+            } else {
+                star.classList.remove('text-amber-500');
+                star.classList.add('text-gray-600');
+            }
+        });
+
+        // Enable submit button
+        document.getElementById('submit-rating-btn').disabled = false;
+    }
+
+    function submitRating(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('submit-rating-btn');
+        const msg = document.getElementById('rating-msg');
+        const review = document.getElementById('review-text').value;
+
+        if (selectedRating === 0) {
+            msg.textContent = 'Tafadhali chagua rating';
+            msg.className = 'text-center text-sm mt-3 text-red-500';
+            msg.classList.remove('hidden');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="animate-pulse">Inatuma...</span>';
+
+        fetch('/api/line-requests/{{ $lineRequest->id }}/rate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+            },
+            body: JSON.stringify({
+                rating: selectedRating,
+                review: review
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.id || data.success) {
+                msg.textContent = 'Asante kwa maoni yako!';
+                msg.className = 'text-center text-sm mt-3 text-green-500';
+                msg.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                throw new Error(data.message || 'Failed to submit rating');
+            }
+        })
+        .catch(err => {
+            console.error('Rating error:', err);
+            msg.textContent = err.message || 'Imeshindikana kutuma rating';
+            msg.className = 'text-center text-sm mt-3 text-red-500';
+            msg.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = 'Tuma Rating';
         });
     }
 </script>
