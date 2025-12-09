@@ -85,14 +85,14 @@
                 <h3 class="text-lg font-bold text-white mb-4">Documents</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @forelse($agent->documents as $doc)
-                    <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="group relative aspect-video bg-black rounded-xl overflow-hidden border border-white/10 hover:border-amber-500/50 transition flex items-center justify-center">
+                    <a href="{{ route('admin.documents.view', $doc) }}" target="_blank" class="group relative aspect-video bg-black rounded-xl overflow-hidden border border-white/10 hover:border-amber-500/50 transition flex items-center justify-center">
                         @if(Str::endsWith(strtolower($doc->file_path), '.pdf'))
                             <div class="text-center">
                                 <svg class="w-12 h-12 text-red-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                                 <span class="text-white font-bold text-sm">PDF Document</span>
                             </div>
                         @else
-                            <img src="{{ asset('storage/' . $doc->file_path) }}" class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition">
+                            <img src="{{ route('admin.documents.view', $doc) }}" class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition">
                         @endif
                         <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <span class="bg-black/50 px-2 py-1 rounded text-xs text-white font-bold uppercase">{{ str_replace('_', ' ', $doc->document_type) }}</span>

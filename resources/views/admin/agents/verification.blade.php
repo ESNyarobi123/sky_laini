@@ -65,14 +65,14 @@
                     <div class="grid grid-cols-2 gap-4">
                         @foreach($agent->documents as $doc)
                         <div class="group">
-                            <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="block aspect-[4/3] bg-black/40 rounded-xl overflow-hidden border border-white/10 hover:border-amber-500/50 transition relative flex items-center justify-center">
+                            <a href="{{ route('admin.documents.view', $doc) }}" target="_blank" class="block aspect-[4/3] bg-black/40 rounded-xl overflow-hidden border border-white/10 hover:border-amber-500/50 transition relative flex items-center justify-center">
                                 @if(Str::endsWith(strtolower($doc->file_path), '.pdf'))
                                     <div class="text-center p-4">
                                         <svg class="w-10 h-10 text-red-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                                         <span class="text-white font-bold text-xs">PDF</span>
                                     </div>
                                 @else
-                                    <img src="{{ asset('storage/' . $doc->file_path) }}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition" alt="Document">
+                                    <img src="{{ route('admin.documents.view', $doc) }}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition" alt="Document">
                                 @endif
                                 
                                 <!-- Overlay Label -->
@@ -81,7 +81,7 @@
                                 </div>
                             </a>
                             <div class="mt-2 flex justify-end">
-                                <a href="{{ asset('storage/' . $doc->file_path) }}" download class="text-xs text-amber-500 hover:text-amber-400 font-bold flex items-center gap-1">
+                                <a href="{{ route('admin.documents.download', $doc) }}" class="text-xs text-amber-500 hover:text-amber-400 font-bold flex items-center gap-1">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                     Download
                                 </a>

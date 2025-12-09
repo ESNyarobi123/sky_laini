@@ -132,6 +132,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('/agents', [\App\Http\Controllers\Admin\AgentController::class, 'index'])->name('agents.index');
     Route::get('/agents/{agent}', [\App\Http\Controllers\Admin\AgentController::class, 'show'])->name('agents.show');
     Route::post('/agents/{agent}/toggle', [\App\Http\Controllers\Admin\AgentController::class, 'toggleStatus'])->name('agents.toggle');
+    
+    // Agent Documents (bypasses storage link 403 issues)
+    Route::get('/documents/{document}/view', [\App\Http\Controllers\Admin\AgentController::class, 'viewDocument'])->name('documents.view');
+    Route::get('/documents/{document}/download', [\App\Http\Controllers\Admin\AgentController::class, 'downloadDocument'])->name('documents.download');
 
     // Support
     Route::get('/support', [\App\Http\Controllers\Admin\SupportController::class, 'index'])->name('support.index');
