@@ -74,7 +74,7 @@
         <div class="lg:col-span-1 space-y-6">
             <!-- Profile Picture Card -->
             <div class="profile-card rounded-[2rem] p-8 text-center">
-                <form action="{{ route('profile.picture.upload') }}" method="POST" enctype="multipart/form-data" id="pictureForm">
+                <form action="{{ route(request()->routeIs('customer.*') ? 'customer.profile.picture.upload' : 'agent.profile.picture.upload') }}" method="POST" enctype="multipart/form-data" id="pictureForm">
                     @csrf
                     <div class="relative inline-block mb-6">
                         <label for="profile_picture" class="avatar-upload block">
@@ -115,7 +115,7 @@
                 </div>
 
                 @if($user->profile_picture)
-                <form action="{{ route('profile.picture.delete') }}" method="POST" class="mt-4">
+                <form action="{{ route(request()->routeIs('customer.*') ? 'customer.profile.picture.delete' : 'agent.profile.picture.delete') }}" method="POST" class="mt-4">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="text-red-500 text-sm font-bold hover:text-red-400 transition">
@@ -172,7 +172,7 @@
                     </div>
                     Badilisha Jina
                 </h3>
-                <form action="{{ route('profile.name.update') }}" method="POST">
+                <form action="{{ route(request()->routeIs('customer.*') ? 'customer.profile.name.update' : 'agent.profile.name.update') }}" method="POST">
                     @csrf
                     @method('PUT')
                     <div class="flex flex-col md:flex-row gap-4">
@@ -194,7 +194,7 @@
                     </div>
                     Badilisha Nenosiri
                 </h3>
-                <form action="{{ route('profile.password.update') }}" method="POST" class="space-y-4">
+                <form action="{{ route(request()->routeIs('customer.*') ? 'customer.profile.password.update' : 'agent.profile.password.update') }}" method="POST" class="space-y-4">
                     @csrf
                     @method('PUT')
                     <div>
@@ -233,7 +233,7 @@
                     Toa Pesa
                     <span class="ml-auto text-green-500 font-bold">Salio: TSh {{ number_format($user->agent->wallet->balance ?? 0) }}</span>
                 </h3>
-                <form action="{{ route('profile.withdrawal.request') }}" method="POST" class="space-y-4">
+                <form action="{{ route('agent.profile.withdrawal.request') }}" method="POST" class="space-y-4">
                     @csrf
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
