@@ -80,7 +80,7 @@
                         <label for="profile_picture" class="avatar-upload block">
                             <div class="w-36 h-36 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-black text-5xl font-black shadow-2xl shadow-amber-500/30 mx-auto overflow-hidden">
                                 @if($user->profile_picture)
-                                    <img src="{{ url('storage/profile_pictures/' . $user->profile_picture) }}" alt="Profile" class="w-full h-full object-cover">
+                                    <img src="{{ route('profile.picture.view', $user->profile_picture) }}" alt="Profile" class="w-full h-full object-cover">
                                 @else
                                     {{ strtoupper(substr($user->name, 0, 2)) }}
                                 @endif

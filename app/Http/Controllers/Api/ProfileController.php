@@ -12,6 +12,17 @@ use Illuminate\Validation\Rules\Password;
 class ProfileController extends Controller
 {
     /**
+     * Generate profile picture URL (uses route to bypass storage symlink issues).
+     */
+    private function getProfilePictureUrl(?string $filename): ?string
+    {
+        if (!$filename) {
+            return null;
+        }
+        return url('/profile-pictures/' . $filename);
+    }
+
+    /**
      * Get current user profile.
      */
     public function show(Request $request): JsonResponse
@@ -26,9 +37,7 @@ class ProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'profile_picture' => $user->profile_picture 
-                    ? url('storage/profile_pictures/' . $user->profile_picture) 
-                    : null,
+                'profile_picture' => $this->getProfilePictureUrl($user->profile_picture),
                 'role' => $user->role->value ?? 'customer',
                 'created_at' => $user->created_at,
             ],
@@ -55,9 +64,7 @@ class ProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'profile_picture' => $user->profile_picture 
-                    ? url('storage/profile_pictures/' . $user->profile_picture) 
-                    : null,
+                'profile_picture' => $this->getProfilePictureUrl($user->profile_picture),
             ],
         ]);
     }
@@ -129,7 +136,7 @@ class ProfileController extends Controller
         $user->update(['profile_picture' => $filename]);
         $user->refresh(); // Refresh to get updated data
 
-        $profilePictureUrl = url('storage/profile_pictures/' . $filename);
+        $profilePictureUrl = $this->getProfilePictureUrl($filename);
 
         return response()->json([
             'success' => true,
@@ -185,9 +192,7 @@ class ProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'profile_picture' => $user->profile_picture 
-                    ? url('storage/profile_pictures/' . $user->profile_picture) 
-                    : null,
+                'profile_picture' => $this->getProfilePictureUrl($user->profile_picture),
                 'role' => $user->role->value ?? 'customer',
             ],
         ]);

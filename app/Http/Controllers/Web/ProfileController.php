@@ -121,6 +121,23 @@ class ProfileController extends Controller
     }
 
     /**
+     * Serve profile picture (bypasses storage symlink issues on shared hosting).
+     */
+    public function viewPicture($filename)
+    {
+        $path = 'profile_pictures/' . $filename;
+        
+        if (!Storage::disk('public')->exists($path)) {
+            abort(404, 'Profile picture not found');
+        }
+
+        $file = Storage::disk('public')->get($path);
+        $mimeType = Storage::disk('public')->mimeType($path);
+
+        return response($file, 200)->header('Content-Type', $mimeType);
+    }
+
+    /**
      * Request withdrawal (for agents).
      */
     public function requestWithdrawal(Request $request)

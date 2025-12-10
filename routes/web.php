@@ -16,6 +16,9 @@ Route::get('/', function () {
 // Leaderboard (Public)
 Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard');
 
+// Profile Pictures (Public - bypasses storage symlink issues)
+Route::get('/profile-pictures/{filename}', [\App\Http\Controllers\Web\ProfileController::class, 'viewPicture'])->name('profile.picture.view');
+
 // Language Switch
 Route::post('/language', function (\Illuminate\Http\Request $request) {
     $locale = $request->input('locale', 'sw');
