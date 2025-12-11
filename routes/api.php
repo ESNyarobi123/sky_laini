@@ -26,6 +26,43 @@ Route::get('/user', function (Request $request) {
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// Get available networks with logos
+Route::get('/networks', function () {
+    $baseUrl = config('app.url');
+    return response()->json([
+        [
+            'id' => 'vodacom',
+            'name' => 'Vodacom',
+            'logo' => $baseUrl . '/images/networks/vodacom.png',
+            'color' => '#E60000',
+        ],
+        [
+            'id' => 'airtel',
+            'name' => 'Airtel',
+            'logo' => $baseUrl . '/images/networks/airtel.png',
+            'color' => '#FF0000',
+        ],
+        [
+            'id' => 'tigo',
+            'name' => 'Tigo',
+            'logo' => $baseUrl . '/images/networks/tigo.png',
+            'color' => '#00377B',
+        ],
+        [
+            'id' => 'halotel',
+            'name' => 'Halotel',
+            'logo' => $baseUrl . '/images/networks/halotel.jpeg',
+            'color' => '#FF6600',
+        ],
+        [
+            'id' => 'zantel',
+            'name' => 'Zantel',
+            'logo' => $baseUrl . '/images/networks/zantel.jpeg',
+            'color' => '#009639',
+        ],
+    ]);
+});
+
 // Public leaderboard
 Route::get('/leaderboard', [LeaderboardController::class, 'data']);
 
