@@ -67,17 +67,70 @@
                 <!-- Network Selection -->
                 <div class="glass-form rounded-3xl p-6">
                     <label class="block text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Chagua Mtandao</label>
-                    <div class="grid grid-cols-2 gap-3">
-                        @foreach(['vodacom', 'airtel', 'tigo', 'halotel', 'zantel'] as $network)
-                        <label class="relative">
-                            <input type="radio" name="line_type" value="{{ $network }}" class="network-radio peer sr-only" required>
-                            <div class="network-card p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-white font-bold capitalize">
-                                    {{ substr($network, 0, 1) }}
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        @php
+                            $networks = [
+                                [
+                                    'name' => 'vodacom', 
+                                    'logo' => 'vodacom.png', 
+                                    'color' => 'from-red-600 to-red-900',
+                                    'shadow' => 'hover:shadow-red-500/40',
+                                    'border' => 'group-hover:border-red-500/50'
+                                ],
+                                [
+                                    'name' => 'airtel', 
+                                    'logo' => 'airtel.png', 
+                                    'color' => 'from-red-500 to-red-800',
+                                    'shadow' => 'hover:shadow-red-500/40',
+                                    'border' => 'group-hover:border-red-500/50'
+                                ],
+                                [
+                                    'name' => 'tigo', 
+                                    'logo' => 'tigo.png', 
+                                    'color' => 'from-blue-400 to-blue-700',
+                                    'shadow' => 'hover:shadow-blue-500/40',
+                                    'border' => 'group-hover:border-blue-500/50'
+                                ],
+                                [
+                                    'name' => 'halotel', 
+                                    'logo' => 'halotel.jpeg', 
+                                    'color' => 'from-orange-400 to-orange-700',
+                                    'shadow' => 'hover:shadow-orange-500/40',
+                                    'border' => 'group-hover:border-orange-500/50'
+                                ],
+                                [
+                                    'name' => 'zantel', 
+                                    'logo' => 'zantel.jpeg', 
+                                    'color' => 'from-green-400 to-green-700',
+                                    'shadow' => 'hover:shadow-green-500/40',
+                                    'border' => 'group-hover:border-green-500/50'
+                                ],
+                            ];
+                        @endphp
+
+                        @foreach($networks as $network)
+                        <label class="relative group cursor-pointer">
+                            <input type="radio" name="line_type" value="{{ $network['name'] }}" class="network-radio peer sr-only" required>
+                            
+                            <div class="network-card relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 p-4 transition-all duration-300 hover:bg-white/10 hover:scale-105 hover:shadow-xl {{ $network['shadow'] }} {{ $network['border'] }} peer-checked:border-amber-500 peer-checked:bg-white/10 peer-checked:shadow-amber-500/20">
+                                <!-- Background Glow -->
+                                <div class="absolute inset-0 bg-gradient-to-br {{ $network['color'] }} opacity-0 group-hover:opacity-10 transition-opacity duration-500"></div>
+                                
+                                <div class="relative z-10 flex flex-col items-center gap-3">
+                                    <div class="w-16 h-16 rounded-full bg-white p-2 shadow-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                        <img src="{{ asset('images/networks/' . $network['logo']) }}" 
+                                             alt="{{ $network['name'] }}" 
+                                             class="w-full h-full object-contain">
+                                    </div>
+                                    
+                                    <span class="text-white font-bold capitalize tracking-wide text-sm group-hover:text-amber-400 transition-colors">
+                                        {{ $network['name'] }}
+                                    </span>
                                 </div>
-                                <span class="text-white font-bold capitalize">{{ $network }}</span>
-                                <div class="check-icon absolute top-2 right-2 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center text-black opacity-0 transform scale-0 transition-all duration-300">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+
+                                <!-- Check Icon -->
+                                <div class="absolute top-3 right-3 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-black opacity-0 transform scale-0 transition-all duration-300 peer-checked:opacity-100 peer-checked:scale-100 shadow-lg shadow-amber-500/50">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                                 </div>
                             </div>
                         </label>
