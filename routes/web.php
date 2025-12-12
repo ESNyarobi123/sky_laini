@@ -200,7 +200,46 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::put('/notifications/{notification}', [\App\Http\Controllers\Admin\PushNotificationController::class, 'update'])->name('notifications.update');
     Route::delete('/notifications/{notification}', [\App\Http\Controllers\Admin\PushNotificationController::class, 'destroy'])->name('notifications.destroy');
     Route::post('/notifications/{notification}/resend', [\App\Http\Controllers\Admin\PushNotificationController::class, 'resend'])->name('notifications.resend');
-    Route::post('/notifications/bulk-delete', [\App\Http\Controllers\Admin\PushNotificationController::class, 'bulkDelete'])->name('notifications.bulk-delete');
     Route::post('/notifications/delete-by-type', [\App\Http\Controllers\Admin\PushNotificationController::class, 'deleteByType'])->name('notifications.delete-by-type');
 });
 
+// Temporary Debug Route (Delete after fixing)
+Route::get('/debug-firebase', function () {
+    $results = [];
+    
+    // 1. Clear Cache
+    try {
+        \Illuminate\Support\Facades\Artisan::call('config:clear');
+        \Illuminate\Support\Facades\Artisan::call('cache:clear');
+        $results['cache'] = '✅ Cache Cleared Successfully';
+    } catch (\Exception $e) {
+        $results['cache'] = '❌ Cache Clear Failed: ' . $e->getMessage();
+    }
+
+    // 2. Check Env
+    $envCreds = env('FIREBASE_CREDENTIALS');
+    $results['env_credentials'] = $envCreds ? "✅ Set: $envCreds" : '❌ Not Set in .env';
+
+    // 3. Check File Existence
+    $path = base_path($envCreds);
+    if (file_exists($path)) {
+        $results['file_check'] = "✅ File Found at: $path";
+        $results['file_readable'] = is_readable($path) ? "✅ File is Readable" : "❌ File is NOT Readable (Check Permissions)";
+        $content = file_get_contents($path);
+        $json = json_decode($content, true);
+        $results['json_valid'] = $json ? "✅ JSON is Valid (Project: " . ($json['project_id'] ?? 'Unknown') . ")" : "❌ Invalid JSON Content";
+    } else {
+        $results['file_check'] = "❌ File NOT Found at: $path (Current Dir: " . getcwd() . ")";
+        $results['dir_listing'] = scandir(base_path());
+    }
+
+    // 4. Test Firebase Init
+    try {
+        $messaging = \Kreait\Laravel\Firebase\Facades\Firebase::messaging();
+        $results['firebase_init'] = "✅ Firebase Messaging Initialized Successfully";
+    } catch (\Exception $e) {
+        $results['firebase_init'] = "❌ Firebase Init Failed: " . $e->getMessage();
+    }
+
+    return $results;
+});
