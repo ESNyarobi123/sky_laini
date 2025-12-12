@@ -189,5 +189,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // Tickets (Detailed View)
     Route::resource('tickets', \App\Http\Controllers\Admin\TicketController::class)->only(['index', 'show']);
     Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\Admin\TicketController::class, 'reply'])->name('tickets.reply');
+
+    // Push Notifications
+    Route::get('/notifications/push', [\App\Http\Controllers\Admin\PushNotificationController::class, 'index'])->name('notifications.push');
+    Route::post('/notifications/push/broadcast', [\App\Http\Controllers\Admin\PushNotificationController::class, 'broadcast'])->name('notifications.broadcast');
 });
 

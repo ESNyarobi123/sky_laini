@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\WalletController;
+use App\Http\Controllers\Api\FcmTokenController;
+use App\Http\Controllers\Api\AdminPushNotificationController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LeaderboardController;
@@ -616,6 +618,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Invoice print
     Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print']);
+
+    // FCM Token Management (Firebase Push Notifications)
+    Route::prefix('fcm')->group(function () {
+        Route::post('/token', [FcmTokenController::class, 'registerToken']);
+        Route::delete('/token', [FcmTokenController::class, 'removeToken']);
+        Route::get('/status', [FcmTokenController::class, 'status']);
+        Route::post('/test', [FcmTokenController::class, 'testNotification']);
+    });
+
+    // Admin Push Notifications
+    Route::prefix('admin/push')->group(function () {
+        Route::post('/broadcast', [AdminPushNotificationController::class, 'broadcast']);
+        Route::post('/user/{userId}', [AdminPushNotificationController::class, 'sendToUser']);
+        Route::get('/stats', [AdminPushNotificationController::class, 'stats']);
+        Route::get('/users', [AdminPushNotificationController::class, 'users']);
+        Route::get('/history', [AdminPushNotificationController::class, 'history']);
+    });
 });
 
 // System settings (public)

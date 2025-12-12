@@ -43,6 +43,8 @@ class InAppNotification extends Model
     const TYPE_REQUEST_RELEASED = 'request_released';
     const TYPE_AGENT_ARRIVING = 'agent_arriving';
     const TYPE_RATING_RECEIVED = 'rating_received';
+    const TYPE_ADMIN_BROADCAST = 'admin_broadcast';
+    const TYPE_ADMIN_MESSAGE = 'admin_message';
 
     /**
      * Icon and color mappings for each notification type
@@ -89,6 +91,14 @@ class InAppNotification extends Model
             self::TYPE_RATING_RECEIVED => [
                 'icon' => 'star',
                 'color' => '#F59E0B', // Amber
+            ],
+            self::TYPE_ADMIN_BROADCAST => [
+                'icon' => 'campaign',
+                'color' => '#6366F1', // Indigo
+            ],
+            self::TYPE_ADMIN_MESSAGE => [
+                'icon' => 'admin_panel_settings',
+                'color' => '#8B5CF6', // Purple
             ],
             default => [
                 'icon' => 'notifications',

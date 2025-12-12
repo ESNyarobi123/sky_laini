@@ -18,7 +18,12 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/app/firebase/
 vendor
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Firebase Service Account (IMPORTANT - Keep Secret!)
+*-firebase-adminsdk-*.json
+skyline-c84aa-firebase-adminsdk-*.json

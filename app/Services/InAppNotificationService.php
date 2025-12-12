@@ -10,8 +10,20 @@ use Illuminate\Support\Facades\Log;
 
 class InAppNotificationService
 {
+    protected ?FirebasePushNotificationService $pushService = null;
+
+    public function __construct()
+    {
+        // Initialize push service if available
+        try {
+            $this->pushService = app(FirebasePushNotificationService::class);
+        } catch (\Exception $e) {
+            Log::warning('Firebase Push Service not available', ['error' => $e->getMessage()]);
+        }
+    }
+
     /**
-     * Send notification to a user
+     * Send notification to a user (In-App + Push)
      */
     public function send(
         User $user,
@@ -29,6 +41,7 @@ class InAppNotificationService
             $data['request_number'] = $lineRequest->request_number;
         }
 
+        // Create in-app notification
         $notification = InAppNotification::create([
             'user_id' => $user->id,
             'line_request_id' => $lineRequest?->id,
@@ -45,6 +58,28 @@ class InAppNotificationService
             'type' => $type,
             'title' => $title,
         ]);
+
+        // Also send push notification if user has FCM token
+        if ($this->pushService && $user->fcm_token) {
+            try {
+                $pushData = array_merge($data, [
+                    'type' => $type,
+                    'notification_id' => (string) $notification->id,
+                ]);
+                
+                // Convert any non-string values to strings for FCM
+                $pushData = array_map(function ($value) {
+                    return is_array($value) ? json_encode($value) : (string) $value;
+                }, $pushData);
+
+                $this->pushService->sendToUser($user, $title, $message, $pushData);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send push notification', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return $notification;
     }
