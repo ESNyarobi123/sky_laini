@@ -66,10 +66,16 @@
             <h1 class="text-3xl font-black text-white mb-2">Push Notifications</h1>
             <p class="text-gray-400 font-medium">Send announcements to all users, agents, or customers</p>
         </div>
-        <a href="{{ route('admin.dashboard') }}" class="px-4 py-2 bg-white/5 text-white font-bold rounded-xl border border-white/10 hover:bg-white/10 transition flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back
-        </a>
+        <div class="flex items-center gap-3">
+            <a href="{{ route('admin.notifications.history') }}" class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-500 hover:to-purple-500 transition flex items-center gap-2 shadow-lg shadow-indigo-500/20">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                View All History
+            </a>
+            <a href="{{ route('admin.dashboard') }}" class="px-4 py-2 bg-white/5 text-white font-bold rounded-xl border border-white/10 hover:bg-white/10 transition flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back
+            </a>
+        </div>
     </div>
 
     <!-- Stats Grid -->
@@ -331,7 +337,7 @@
         `;
         
         try {
-            const response = await fetch('/api/admin/push/broadcast', {
+            const response = await fetch('{{ route("admin.notifications.broadcast") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

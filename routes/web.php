@@ -193,5 +193,14 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // Push Notifications
     Route::get('/notifications/push', [\App\Http\Controllers\Admin\PushNotificationController::class, 'index'])->name('notifications.push');
     Route::post('/notifications/push/broadcast', [\App\Http\Controllers\Admin\PushNotificationController::class, 'broadcast'])->name('notifications.broadcast');
+    
+    // Notification History & Management
+    Route::get('/notifications/history', [\App\Http\Controllers\Admin\PushNotificationController::class, 'history'])->name('notifications.history');
+    Route::get('/notifications/{notification}', [\App\Http\Controllers\Admin\PushNotificationController::class, 'show'])->name('notifications.show');
+    Route::put('/notifications/{notification}', [\App\Http\Controllers\Admin\PushNotificationController::class, 'update'])->name('notifications.update');
+    Route::delete('/notifications/{notification}', [\App\Http\Controllers\Admin\PushNotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::post('/notifications/{notification}/resend', [\App\Http\Controllers\Admin\PushNotificationController::class, 'resend'])->name('notifications.resend');
+    Route::post('/notifications/bulk-delete', [\App\Http\Controllers\Admin\PushNotificationController::class, 'bulkDelete'])->name('notifications.bulk-delete');
+    Route::post('/notifications/delete-by-type', [\App\Http\Controllers\Admin\PushNotificationController::class, 'deleteByType'])->name('notifications.delete-by-type');
 });
 
