@@ -6,251 +6,177 @@ use App\Models\Agent;
 use App\Models\InAppNotification;
 use App\Models\LineRequest;
 use App\Models\User;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
+use Kreait\Firebase\Factory;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
+use Kreait\Firebase\Messaging\AndroidConfig;
+use Kreait\Firebase\Messaging\ApnsConfig;
+use Kreait\Firebase\Exception\MessagingException;
+use Kreait\Laravel\Firebase\Facades\Firebase;
 
 class FirebasePushNotificationService
 {
-    protected string $projectId;
-    protected string $fcmV1Url;
-    protected string $serviceAccountPath;
-    protected ?string $serverKey;
+    protected $messaging;
     protected array $defaults;
 
     public function __construct()
     {
-        $this->projectId = config('firebase.project_id', 'skyline-c84aa');
-        $this->fcmV1Url = config('firebase.fcm_v1_url');
-        $this->serviceAccountPath = config('firebase.service_account_path');
-        $this->serverKey = config('firebase.server_key');
-        $this->defaults = config('firebase.defaults', []);
+        try {
+            // Use kreait/laravel-firebase facade
+            $this->messaging = Firebase::messaging();
+            Log::info('FCM: Firebase Messaging initialized successfully');
+        } catch (\Exception $e) {
+            Log::error('FCM: Failed to initialize Firebase Messaging', [
+                'error' => $e->getMessage()
+            ]);
+            $this->messaging = null;
+        }
+
+        $this->defaults = [
+            'android' => [
+                'channel_id' => 'sky_laini_channel',
+                'priority' => 'high',
+            ],
+            'sound' => 'default',
+            'badge' => 1,
+        ];
     }
 
     /**
-     * Get OAuth2 access token for FCM v1 API
+     * Check if messaging is available
      */
-    protected function getAccessToken(): ?string
+    protected function isAvailable(): bool
     {
-        // Cache the token for 50 minutes (it expires after 60)
-        return Cache::remember('fcm_access_token', 50 * 60, function () {
-            if (!file_exists($this->serviceAccountPath)) {
-                Log::error('FCM: Service account file not found', ['path' => $this->serviceAccountPath]);
-                return null;
-            }
-
-            try {
-                $serviceAccount = json_decode(file_get_contents($this->serviceAccountPath), true);
-
-                if (!isset($serviceAccount['private_key']) || !isset($serviceAccount['client_email'])) {
-                    Log::error('FCM: Invalid service account file');
-                    return null;
-                }
-
-                // Create JWT
-                $now = time();
-                $header = [
-                    'alg' => 'RS256',
-                    'typ' => 'JWT',
-                ];
-                $payload = [
-                    'iss' => $serviceAccount['client_email'],
-                    'sub' => $serviceAccount['client_email'],
-                    'aud' => 'https://oauth2.googleapis.com/token',
-                    'iat' => $now,
-                    'exp' => $now + 3600,
-                    'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-                ];
-
-                $headerEncoded = $this->base64UrlEncode(json_encode($header));
-                $payloadEncoded = $this->base64UrlEncode(json_encode($payload));
-                $signatureInput = $headerEncoded . '.' . $payloadEncoded;
-
-                // Sign with private key
-                $privateKey = openssl_pkey_get_private($serviceAccount['private_key']);
-                if (!$privateKey) {
-                    Log::error('FCM: Failed to load private key');
-                    return null;
-                }
-
-                openssl_sign($signatureInput, $signature, $privateKey, OPENSSL_ALGO_SHA256);
-                $signatureEncoded = $this->base64UrlEncode($signature);
-
-                $jwt = $signatureInput . '.' . $signatureEncoded;
-
-                // Exchange JWT for access token
-                $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
-                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                    'assertion' => $jwt,
-                ]);
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    Log::info('FCM: Access token obtained successfully');
-                    return $data['access_token'] ?? null;
-                }
-
-                Log::error('FCM: Failed to get access token', ['response' => $response->body()]);
-                return null;
-
-            } catch (\Exception $e) {
-                Log::error('FCM: Exception getting access token', ['error' => $e->getMessage()]);
-                return null;
-            }
-        });
+        if (!$this->messaging) {
+            Log::warning('FCM: Messaging service not available');
+            return false;
+        }
+        return true;
     }
 
     /**
-     * Base64 URL encode
-     */
-    protected function base64UrlEncode(string $data): string
-    {
-        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
-    }
-
-    /**
-     * Send push notification to a single user using FCM v1 API
+     * Send push notification to a single user
      */
     public function sendToUser(User $user, string $title, string $body, array $data = []): bool
     {
+        if (!$this->isAvailable()) {
+            return false;
+        }
+
         if (!$user->fcm_token) {
             Log::warning('FCM: User has no FCM token', ['user_id' => $user->id]);
             return false;
         }
 
-        return $this->sendV1($user->fcm_token, $title, $body, $data);
+        return $this->sendToToken($user->fcm_token, $title, $body, $data);
     }
 
     /**
-     * Send notification using FCM v1 API (OAuth2)
+     * Send notification to a specific FCM token
      */
-    public function sendV1(string $token, string $title, string $body, array $data = []): bool
+    public function sendToToken(string $token, string $title, string $body, array $data = []): bool
     {
-        $accessToken = $this->getAccessToken();
-
-        if (!$accessToken) {
-            // Fallback to legacy API if v1 fails
-            return $this->sendLegacy($token, $title, $body, $data);
+        if (!$this->isAvailable()) {
+            return false;
         }
-
-        // Ensure all data values are strings (FCM requirement)
-        $stringData = [];
-        foreach ($data as $key => $value) {
-            $stringData[$key] = is_array($value) ? json_encode($value) : (string) $value;
-        }
-        $stringData['click_action'] = 'FLUTTER_NOTIFICATION_CLICK';
-
-        $payload = [
-            'message' => [
-                'token' => $token,
-                'notification' => [
-                    'title' => $title,
-                    'body' => $body,
-                ],
-                'data' => $stringData,
-                'android' => [
-                    'priority' => 'high',
-                    'notification' => [
-                        'channel_id' => $this->defaults['android']['channel_id'] ?? 'sky_laini_channel',
-                        'sound' => 'default',
-                        'default_vibrate_timings' => true,
-                        'default_light_settings' => true,
-                    ],
-                ],
-                'apns' => [
-                    'payload' => [
-                        'aps' => [
-                            'sound' => 'default',
-                            'badge' => 1,
-                        ],
-                    ],
-                ],
-            ],
-        ];
 
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $accessToken,
-                'Content-Type' => 'application/json',
-            ])->post($this->fcmV1Url, $payload);
-
-            if ($response->successful()) {
-                Log::info('FCM v1: Notification sent successfully', [
-                    'token' => substr($token, 0, 20) . '...',
-                    'title' => $title,
-                ]);
-                return true;
+            // Ensure all data values are strings (FCM requirement)
+            $stringData = [];
+            foreach ($data as $key => $value) {
+                $stringData[$key] = is_array($value) ? json_encode($value) : (string) $value;
             }
+            $stringData['click_action'] = 'FLUTTER_NOTIFICATION_CLICK';
 
-            $error = $response->json();
-            
-            // Handle invalid token
-            if (isset($error['error']['details'])) {
-                foreach ($error['error']['details'] as $detail) {
-                    if (isset($detail['errorCode']) && 
-                        in_array($detail['errorCode'], ['UNREGISTERED', 'INVALID_ARGUMENT'])) {
-                        $this->handleInvalidToken($token);
-                    }
-                }
-            }
+            // Build the message
+            $message = CloudMessage::withTarget('token', $token)
+                ->withNotification(Notification::create($title, $body))
+                ->withData($stringData)
+                ->withAndroidConfig(
+                    AndroidConfig::fromArray([
+                        'priority' => 'high',
+                        'notification' => [
+                            'channel_id' => $this->defaults['android']['channel_id'],
+                            'sound' => 'default',
+                            'default_vibrate_timings' => true,
+                            'default_light_settings' => true,
+                        ],
+                    ])
+                )
+                ->withApnsConfig(
+                    ApnsConfig::fromArray([
+                        'payload' => [
+                            'aps' => [
+                                'sound' => 'default',
+                                'badge' => 1,
+                            ],
+                        ],
+                    ])
+                );
 
-            Log::error('FCM v1: Send failed', [
-                'status' => $response->status(),
-                'error' => $error,
+            // Send the message
+            $response = $this->messaging->send($message);
+
+            Log::info('FCM: Notification sent successfully', [
+                'token' => substr($token, 0, 20) . '...',
+                'title' => $title,
+                'response' => $response,
             ]);
 
+            return true;
+
+        } catch (MessagingException $e) {
+            Log::error('FCM: MessagingException', [
+                'token' => substr($token, 0, 20) . '...',
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
+
+            // Check if token is invalid and remove it
+            if ($this->isInvalidTokenError($e)) {
+                $this->handleInvalidToken($token);
+            }
+
             return false;
 
         } catch (\Exception $e) {
-            Log::error('FCM v1: Exception during send', ['message' => $e->getMessage()]);
+            Log::error('FCM: Exception during send', [
+                'error' => $e->getMessage(),
+                'class' => get_class($e),
+            ]);
             return false;
         }
     }
 
     /**
-     * Send notification using Legacy FCM API (fallback)
+     * Check if the error indicates an invalid token
      */
-    public function sendLegacy(string $token, string $title, string $body, array $data = []): bool
+    protected function isInvalidTokenError(MessagingException $e): bool
     {
-        if (!$this->serverKey) {
-            Log::error('FCM Legacy: Server key not configured');
-            return false;
-        }
-
-        $payload = [
-            'to' => $token,
-            'notification' => [
-                'title' => $title,
-                'body' => $body,
-                'sound' => 'default',
-            ],
-            'data' => array_merge($data, [
-                'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                'title' => $title,
-                'body' => $body,
-            ]),
-            'android' => [
-                'priority' => 'high',
-            ],
-        ];
-
-        try {
-            $response = Http::withHeaders([
-                'Authorization' => 'key=' . $this->serverKey,
-                'Content-Type' => 'application/json',
-            ])->post('https://fcm.googleapis.com/fcm/send', $payload);
-
-            if ($response->successful()) {
-                $result = $response->json();
-                if (isset($result['success']) && $result['success'] > 0) {
-                    return true;
-                }
+        $invalidCodes = ['UNREGISTERED', 'INVALID_ARGUMENT', 'NOT_FOUND'];
+        $message = $e->getMessage();
+        
+        foreach ($invalidCodes as $code) {
+            if (stripos($message, $code) !== false) {
+                return true;
             }
+        }
+        
+        return false;
+    }
 
-            return false;
-        } catch (\Exception $e) {
-            Log::error('FCM Legacy: Exception during send', ['message' => $e->getMessage()]);
-            return false;
+    /**
+     * Handle invalid FCM token - remove from database
+     */
+    protected function handleInvalidToken(?string $token): void
+    {
+        if ($token) {
+            User::where('fcm_token', $token)->update([
+                'fcm_token' => null,
+                'fcm_token_updated_at' => null,
+            ]);
+            Log::info('FCM: Removed invalid token', ['token' => substr($token, 0, 20) . '...']);
         }
     }
 
@@ -277,6 +203,11 @@ class FirebasePushNotificationService
             ->whereNotNull('fcm_token')
             ->where('fcm_token', '!=', '')
             ->get();
+
+        Log::info('FCM: Sending to agents', [
+            'count' => $users->count(),
+            'users' => $users->pluck('name', 'id'),
+        ]);
 
         return $this->sendToUserCollection($users, $title, $body, $data);
     }
@@ -320,20 +251,80 @@ class FirebasePushNotificationService
     }
 
     /**
-     * Handle invalid FCM token - remove from database
+     * Send to multiple tokens at once (batch)
      */
-    protected function handleInvalidToken(?string $token): void
+    public function sendToTokens(array $tokens, string $title, string $body, array $data = []): array
     {
-        if ($token) {
-            User::where('fcm_token', $token)->update([
-                'fcm_token' => null,
-                'fcm_token_updated_at' => null,
-            ]);
-            Log::info('FCM: Removed invalid token', ['token' => substr($token, 0, 20) . '...']);
-            
-            // Clear the access token cache if there's an issue
-            Cache::forget('fcm_access_token');
+        if (!$this->isAvailable() || empty($tokens)) {
+            return ['success' => 0, 'failure' => count($tokens)];
         }
+
+        try {
+            $stringData = [];
+            foreach ($data as $key => $value) {
+                $stringData[$key] = is_array($value) ? json_encode($value) : (string) $value;
+            }
+            $stringData['click_action'] = 'FLUTTER_NOTIFICATION_CLICK';
+
+            $message = CloudMessage::new()
+                ->withNotification(Notification::create($title, $body))
+                ->withData($stringData)
+                ->withAndroidConfig(
+                    AndroidConfig::fromArray([
+                        'priority' => 'high',
+                        'notification' => [
+                            'channel_id' => $this->defaults['android']['channel_id'],
+                            'sound' => 'default',
+                        ],
+                    ])
+                );
+
+            $report = $this->messaging->sendMulticast($message, $tokens);
+
+            $success = $report->successes()->count();
+            $failure = $report->failures()->count();
+
+            // Handle invalid tokens
+            foreach ($report->failures()->getItems() as $failedItem) {
+                $token = $tokens[$failedItem->index()] ?? null;
+                if ($token && $this->isInvalidTokenFromReport($failedItem)) {
+                    $this->handleInvalidToken($token);
+                }
+            }
+
+            Log::info('FCM: Multicast send completed', [
+                'success' => $success,
+                'failure' => $failure,
+            ]);
+
+            return ['success' => $success, 'failure' => $failure];
+
+        } catch (\Exception $e) {
+            Log::error('FCM: Multicast exception', ['error' => $e->getMessage()]);
+            return ['success' => 0, 'failure' => count($tokens)];
+        }
+    }
+
+    /**
+     * Check if a failure report indicates an invalid token
+     */
+    protected function isInvalidTokenFromReport($failedItem): bool
+    {
+        $error = $failedItem->error();
+        if (!$error) {
+            return false;
+        }
+        
+        $message = $error->getMessage();
+        $invalidCodes = ['UNREGISTERED', 'INVALID_ARGUMENT', 'NOT_FOUND'];
+        
+        foreach ($invalidCodes as $code) {
+            if (stripos($message, $code) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     // ========================================
@@ -526,32 +517,86 @@ class FirebasePushNotificationService
      */
     public function sendToTopic(string $topic, string $title, string $body, array $data = []): bool
     {
-        $accessToken = $this->getAccessToken();
-
-        if (!$accessToken) {
+        if (!$this->isAvailable()) {
             return false;
         }
 
-        $payload = [
-            'message' => [
-                'topic' => $topic,
-                'notification' => [
-                    'title' => $title,
-                    'body' => $body,
-                ],
-                'data' => array_map('strval', $data),
-            ],
-        ];
-
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $accessToken,
-                'Content-Type' => 'application/json',
-            ])->post($this->fcmV1Url, $payload);
+            $stringData = array_map('strval', $data);
 
-            return $response->successful();
+            $message = CloudMessage::withTarget('topic', $topic)
+                ->withNotification(Notification::create($title, $body))
+                ->withData($stringData);
+
+            $this->messaging->send($message);
+
+            return true;
         } catch (\Exception $e) {
             Log::error('FCM: Topic send failed', ['message' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Subscribe tokens to a topic
+     */
+    public function subscribeToTopic(array $tokens, string $topic): bool
+    {
+        if (!$this->isAvailable() || empty($tokens)) {
+            return false;
+        }
+
+        try {
+            $this->messaging->subscribeToTopic($topic, $tokens);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('FCM: Failed to subscribe to topic', [
+                'topic' => $topic,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Unsubscribe tokens from a topic
+     */
+    public function unsubscribeFromTopic(array $tokens, string $topic): bool
+    {
+        if (!$this->isAvailable() || empty($tokens)) {
+            return false;
+        }
+
+        try {
+            $this->messaging->unsubscribeFromTopic($topic, $tokens);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('FCM: Failed to unsubscribe from topic', [
+                'topic' => $topic,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Validate a single FCM token
+     */
+    public function validateToken(string $token): bool
+    {
+        if (!$this->isAvailable()) {
+            return false;
+        }
+
+        try {
+            // Send a dry run message to validate the token
+            $message = CloudMessage::withTarget('token', $token)
+                ->withNotification(Notification::create('Test', 'Token validation'));
+
+            $this->messaging->send($message, true); // validateOnly = true
+
+            return true;
+        } catch (\Exception $e) {
             return false;
         }
     }
