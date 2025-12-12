@@ -5,16 +5,21 @@ namespace App\Http\Controllers\Agent;
 use App\Http\Controllers\Controller;
 use App\Models\LineRequest;
 use App\RequestStatus;
+use App\Services\InAppNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class RequestActionController extends Controller
 {
     protected $zenoPay;
+    protected $inAppNotificationService;
 
-    public function __construct(\App\Services\ZenoPayService $zenoPay)
-    {
+    public function __construct(
+        \App\Services\ZenoPayService $zenoPay,
+        InAppNotificationService $inAppNotificationService
+    ) {
         $this->zenoPay = $zenoPay;
+        $this->inAppNotificationService = $inAppNotificationService;
     }
 
     public function accept(Request $request, LineRequest $lineRequest): JsonResponse
@@ -35,6 +40,9 @@ class RequestActionController extends Controller
             'status' => RequestStatus::Accepted,
             'accepted_at' => now(),
         ]);
+
+        // 🔔 Notify customer that agent has accepted their request
+        $this->inAppNotificationService->notifyCustomerAgentAccepted($lineRequest);
 
         // 2. Initiate Payment (ZenoPay)
         // Get amount from settings or default to 1000
@@ -62,6 +70,9 @@ class RequestActionController extends Controller
                 'payment_status' => 'pending',
                 'service_fee' => $amount, // Tambua bei ya huduma
             ]);
+
+            // 🔔 Notify customer about payment pending (USSD sent)
+            $this->inAppNotificationService->notifyCustomerPaymentPending($lineRequest);
             
             return response()->json([
                 'message' => 'Request accepted. Payment request sent to customer.',
@@ -76,6 +87,7 @@ class RequestActionController extends Controller
             ]);
         }
     }
+
 
     public function reject(Request $request, LineRequest $lineRequest): JsonResponse
     {
@@ -106,6 +118,9 @@ class RequestActionController extends Controller
             'status' => RequestStatus::Pending,
             'accepted_at' => null,
         ]);
+
+        // 🔔 Notify all online agents that a request has been released back to pool
+        $this->inAppNotificationService->notifyAgentsRequestReleased($lineRequest);
 
         return response()->json(['message' => 'Request released successfully']);
     }
@@ -138,6 +153,9 @@ class RequestActionController extends Controller
                 'payment_order_id' => null
             ]);
 
+            // 🔔 Notify all online agents that a request has been released back to pool
+            $this->inAppNotificationService->notifyAgentsRequestReleased($lineRequest);
+
             return response()->json([
                 'message' => 'Maximum payment attempts reached. Job has been released back to the pool.',
                 'released' => true
@@ -168,6 +186,9 @@ class RequestActionController extends Controller
                 'payment_status' => 'pending',
                 'service_fee' => $amount, // Tambua bei ya huduma
             ]);
+
+            // 🔔 Notify customer about new payment request
+            $this->inAppNotificationService->notifyCustomerPaymentPending($lineRequest);
             
             return response()->json([
                 'message' => 'Payment request resent successfully. Attempt ' . $attempts . '/3',

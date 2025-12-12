@@ -83,10 +83,25 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
-    // Notifications
+    // Notifications (Old - SystemNotification)
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
+    // In-App Notifications (New - comprehensive)
+    Route::prefix('in-app-notifications')->group(function () {
+        // Static routes MUST come first
+        Route::get('/', [\App\Http\Controllers\Api\InAppNotificationController::class, 'index']);
+        Route::get('/unread-count', [\App\Http\Controllers\Api\InAppNotificationController::class, 'unreadCount']);
+        Route::get('/summary', [\App\Http\Controllers\Api\InAppNotificationController::class, 'summary']);
+        Route::post('/read-all', [\App\Http\Controllers\Api\InAppNotificationController::class, 'markAllAsRead']);
+        Route::post('/clear-read', [\App\Http\Controllers\Api\InAppNotificationController::class, 'clearRead']);
+        
+        // Dynamic {id} routes come after static routes
+        Route::get('/{id}', [\App\Http\Controllers\Api\InAppNotificationController::class, 'show'])->whereNumber('id');
+        Route::post('/{id}/read', [\App\Http\Controllers\Api\InAppNotificationController::class, 'markAsRead'])->whereNumber('id');
+        Route::delete('/{id}', [\App\Http\Controllers\Api\InAppNotificationController::class, 'destroy'])->whereNumber('id');
+    });
 
     // Chat routes
     Route::prefix('chat')->group(function () {

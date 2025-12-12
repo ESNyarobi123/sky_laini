@@ -8,6 +8,7 @@ use App\Models\LineRequest;
 use App\RequestStatus;
 use App\Services\AgentMatchingService;
 use App\Services\NotificationService;
+use App\Services\InAppNotificationService;
 use App\Services\ZenoPayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ class LineRequestController extends Controller
     public function __construct(
         private AgentMatchingService $matchingService,
         private NotificationService $notificationService,
+        private InAppNotificationService $inAppNotificationService,
         private ZenoPayService $zenoPayService
     ) {
     }
@@ -53,7 +55,13 @@ class LineRequestController extends Controller
             'customer_phone' => $validated['customer_phone'],
         ]);
 
-        // Find best matching agent
+        // 🔔 Send in-app notification to customer that order is created
+        $this->inAppNotificationService->notifyCustomerOrderCreated($lineRequest);
+
+        // 🔔 Notify ALL agents about the new request
+        $this->inAppNotificationService->notifyAllAgentsNewRequest($lineRequest);
+
+        // Find best matching agent (optional assignment)
         $agent = $this->matchingService->findBestAgent($lineRequest);
 
         if ($agent) {
@@ -69,6 +77,7 @@ class LineRequestController extends Controller
 
         return response()->json($lineRequest->load(['customer', 'agent']), 201);
     }
+
 
     /**
      * Get customer's line requests.
@@ -132,6 +141,9 @@ class LineRequestController extends Controller
             'cancelled_at' => now(),
         ]);
 
+        // 🔔 Notify customer that their request was cancelled
+        $this->inAppNotificationService->notifyCustomerRequestCancelled($lineRequest, 'Umefuta ombi lako mwenyewe.');
+
         return response()->json(['message' => 'Request cancelled successfully']);
     }
 
@@ -178,6 +190,9 @@ class LineRequestController extends Controller
                 'rating' => $newRating,
                 'total_ratings' => $newTotalRatings,
             ]);
+
+            // 🔔 Notify agent that they received a rating
+            $this->inAppNotificationService->notifyAgentRatingReceived($lineRequest, $validated['rating']);
         }
 
         return response()->json($rating, 201);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LineRequest;
 use App\RequestStatus;
 use App\Services\InvoiceService;
+use App\Services\InAppNotificationService;
 use App\Services\ZenoPayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -13,11 +14,16 @@ class PaymentController extends Controller
 {
     protected $zenoPay;
     protected $invoiceService;
+    protected $inAppNotificationService;
 
-    public function __construct(ZenoPayService $zenoPay, InvoiceService $invoiceService)
-    {
+    public function __construct(
+        ZenoPayService $zenoPay, 
+        InvoiceService $invoiceService,
+        InAppNotificationService $inAppNotificationService
+    ) {
         $this->zenoPay = $zenoPay;
         $this->invoiceService = $invoiceService;
+        $this->inAppNotificationService = $inAppNotificationService;
     }
 
     public function initiate(Request $request, LineRequest $lineRequest)
@@ -119,6 +125,12 @@ class PaymentController extends Controller
                             'error' => $e->getMessage(),
                         ]);
                     }
+
+                    // 🔔 Notify customer that payment was received
+                    $this->inAppNotificationService->notifyCustomerPaymentReceived($lineRequest);
+
+                    // 🔔 Notify agent that customer has paid
+                    $this->inAppNotificationService->notifyAgentPaymentReceived($lineRequest);
                     
                     \Log::info('Payment marked as paid', [
                         'line_request_id' => $lineRequest->id,
@@ -221,6 +233,9 @@ class PaymentController extends Controller
                 'earnings' => $earnings,
                 'invoice_id' => $invoice?->id,
             ]);
+
+            // 🔔 Notify both customer and agent that job is completed
+            $this->inAppNotificationService->notifyJobCompleted($lineRequest);
 
             return response()->json([
                 'message' => 'Job completed successfully!',

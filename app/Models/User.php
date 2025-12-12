@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -81,5 +82,15 @@ class User extends Authenticatable
     public function tickets(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(SupportTicket::class);
+    }
+
+    public function inAppNotifications(): HasMany
+    {
+        return $this->hasMany(InAppNotification::class)->orderBy('created_at', 'desc');
+    }
+
+    public function unreadNotificationsCount(): int
+    {
+        return $this->inAppNotifications()->whereNull('read_at')->count();
     }
 }
