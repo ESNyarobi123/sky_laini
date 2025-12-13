@@ -7,7 +7,6 @@ use App\Models\Booking;
 use App\Services\BookingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
 {
@@ -18,183 +17,139 @@ class BookingController extends Controller
         $this->bookingService = $bookingService;
     }
 
+    // ==================== CUSTOMER ENDPOINTS ====================
+
     /**
      * Get customer's bookings
      */
-    public function index(Request $request): JsonResponse
+    public function customerIndex(Request $request): JsonResponse
     {
         $customer = $request->user()->customer;
-
+        
         if (!$customer) {
             return response()->json(['message' => 'Customer profile not found'], 404);
         }
 
-        $bookings = $this->bookingService->getCustomerBookings($customer);
+        $bookings = Booking::where('customer_id', $customer->id)
+            ->with(['agent.user:id,name,profile_picture'])
+            ->orderByDesc('scheduled_date')
+            ->get()
+            ->map(fn($b) => $this->formatBooking($b));
 
         return response()->json([
-            'success' => true,
-            'bookings' => $bookings->map(fn($b) => $this->formatBooking($b)),
-        ]);
-    }
-
-    /**
-     * Get upcoming bookings
-     */
-    public function upcoming(Request $request): JsonResponse
-    {
-        $user = $request->user();
-
-        if ($user->isCustomer()) {
-            $bookings = Booking::where('customer_id', $user->customer->id)
-                ->upcoming()
-                ->with(['agent.user'])
-                ->orderBy('scheduled_date')
-                ->get();
-        } elseif ($user->isAgent()) {
-            $bookings = $this->bookingService->getAgentUpcomingBookings($user->agent);
-        } else {
-            return response()->json(['message' => 'Invalid user type'], 400);
-        }
-
-        return response()->json([
-            'success' => true,
-            'bookings' => $bookings->map(fn($b) => $this->formatBooking($b)),
+            'bookings' => $bookings,
+            'stats' => [
+                'total' => $bookings->count(),
+                'pending' => $bookings->where('status', 'pending')->count(),
+                'confirmed' => $bookings->where('status', 'confirmed')->count(),
+                'completed' => $bookings->where('status', 'completed')->count(),
+            ]
         ]);
     }
 
     /**
      * Create a new booking
      */
-    public function store(Request $request): JsonResponse
+    public function customerStore(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'line_type' => ['required', Rule::in(['vodacom', 'airtel', 'tigo', 'halotel', 'zantel'])],
-            'scheduled_date' => 'required|date|after:today',
+            'line_type' => 'required|string',
+            'scheduled_date' => 'required|date|after_or_equal:today',
             'scheduled_time' => 'nullable|date_format:H:i',
-            'time_slot' => ['nullable', Rule::in(['morning', 'afternoon', 'evening'])],
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
-            'address' => 'nullable|string|max:255',
+            'time_slot' => 'nullable|in:morning,afternoon,evening',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'address' => 'nullable|string|max:500',
             'phone' => 'required|string|max:20',
-            'notes' => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:1000',
             'preferred_agent_id' => 'nullable|exists:agents,id',
-            'is_recurring' => 'nullable|boolean',
-            'recurrence_type' => ['nullable', Rule::in(['daily', 'weekly', 'monthly'])],
         ]);
 
         $customer = $request->user()->customer;
-
+        
         if (!$customer) {
             return response()->json(['message' => 'Customer profile not found'], 404);
         }
 
-        $booking = $this->bookingService->createBooking($validated, $customer);
+        try {
+            $booking = $this->bookingService->createBooking($validated, $customer);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Booking imeundwa kikamilifu!',
-            'booking' => $this->formatBooking($booking),
-        ], 201);
-    }
-
-    /**
-     * Get booking details
-     */
-    public function show(Request $request, Booking $booking): JsonResponse
-    {
-        $user = $request->user();
-
-        // Check authorization
-        if ($user->isCustomer() && $booking->customer_id !== $user->customer?->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        if ($user->isAgent() && $booking->agent_id !== $user->agent?->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $booking->load(['customer.user', 'agent.user', 'lineRequest']);
-
-        return response()->json([
-            'success' => true,
-            'booking' => $this->formatBooking($booking, true),
-        ]);
-    }
-
-    /**
-     * Agent confirms a booking
-     */
-    public function confirm(Request $request, Booking $booking): JsonResponse
-    {
-        $agent = $request->user()->agent;
-
-        if (!$agent) {
-            return response()->json(['message' => 'Agent profile not found'], 404);
-        }
-
-        if (!$agent->is_verified) {
-            return response()->json(['message' => 'Agent hajaverifyiwa'], 403);
-        }
-
-        $result = $this->bookingService->confirmBooking($booking, $agent);
-
-        if (!$result) {
             return response()->json([
-                'success' => false,
-                'message' => 'Haiwezekani kukubali booking hii. Inaweza kuwa imekubaliwa au umeshika kazi nyingine wakati huohuo.',
-            ], 400);
+                'message' => 'Booking imewekwa kikamilifu! Utaarifiwa agent atakapokubali.',
+                'booking' => $this->formatBooking($booking),
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to create booking: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get single booking details for customer
+     */
+    public function customerShow(Request $request, Booking $booking): JsonResponse
+    {
+        $customer = $request->user()->customer;
+        
+        if (!$customer || $booking->customer_id !== $customer->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         return response()->json([
-            'success' => true,
-            'message' => 'Umekubali booking kikamilifu!',
-            'booking' => $this->formatBooking($booking->fresh()),
+            'booking' => $this->formatBooking($booking->load(['agent.user', 'lineRequest'])),
         ]);
     }
 
     /**
      * Cancel a booking
      */
-    public function cancel(Request $request, Booking $booking): JsonResponse
+    public function customerCancel(Request $request, Booking $booking): JsonResponse
     {
-        $request->validate([
-            'reason' => 'required|string|max:255',
-        ]);
-
-        $user = $request->user();
-        $cancelledBy = $user->isAgent() ? 'agent' : 'customer';
-
-        // Check authorization
-        if ($user->isCustomer() && $booking->customer_id !== $user->customer?->id) {
+        $customer = $request->user()->customer;
+        
+        if (!$customer || $booking->customer_id !== $customer->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($user->isAgent() && $booking->agent_id !== $user->agent?->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $result = $this->bookingService->cancelBooking($booking, $request->reason, $cancelledBy);
-
-        if (!$result) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Haiwezekani kughairi booking hii.',
-            ], 400);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Booking imeghairiwa.',
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
         ]);
+
+        $success = $this->bookingService->cancelBooking($booking, $validated['reason'], 'customer');
+
+        if ($success) {
+            return response()->json(['message' => 'Booking imeghairiwa']);
+        }
+
+        return response()->json(['message' => 'Haiwezekani kughairi booking hii'], 400);
     }
 
     /**
-     * Get available agents for a date/time
+     * Get available dates for booking
+     */
+    public function availableDates(Request $request): JsonResponse
+    {
+        // Return next 30 days
+        $dates = collect();
+        for ($i = 0; $i < 30; $i++) {
+            $date = now()->addDays($i);
+            $dates->push([
+                'date' => $date->format('Y-m-d'),
+                'day_name' => $date->translatedFormat('l'),
+                'display' => $date->format('d M Y'),
+                'is_weekend' => $date->isWeekend(),
+            ]);
+        }
+
+        return response()->json(['dates' => $dates]);
+    }
+
+    /**
+     * Get available agents for a specific date
      */
     public function availableAgents(Request $request): JsonResponse
     {
         $request->validate([
-            'date' => 'required|date|after_or_equal:today',
+            'date' => 'required|date',
             'time' => 'nullable|date_format:H:i',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
@@ -208,126 +163,250 @@ class BookingController extends Controller
         );
 
         return response()->json([
-            'success' => true,
-            'agents' => $agents->map(function ($agent) {
-                return [
-                    'id' => $agent->id,
-                    'name' => $agent->user?->name ?? 'Unknown',
-                    'profile_picture' => $agent->user?->profile_picture,
-                    'rating' => $agent->rating,
-                    'total_completed' => $agent->completed_requests ?? 0,
-                    'distance_km' => $agent->distance ? round($agent->distance, 1) : null,
-                    'specialization' => $agent->specialization,
-                ];
-            }),
+            'agents' => $agents->map(fn($a) => [
+                'id' => $a->id,
+                'name' => $a->user?->name,
+                'profile_picture' => $a->user?->profile_picture,
+                'rating' => $a->rating,
+                'distance' => $a->distance ?? null,
+            ]),
         ]);
     }
 
+    // ==================== AGENT ENDPOINTS ====================
+
     /**
-     * Agent's pending booking requests
+     * Get agent's bookings overview
      */
-    public function pending(Request $request): JsonResponse
+    public function agentIndex(Request $request): JsonResponse
     {
         $agent = $request->user()->agent;
-
+        
         if (!$agent) {
             return response()->json(['message' => 'Agent profile not found'], 404);
         }
 
-        // Get pending bookings (either assigned to agent or unassigned)
-        $bookings = Booking::where(function ($q) use ($agent) {
-            $q->whereNull('agent_id')
-              ->orWhere('agent_id', $agent->id);
-        })
-            ->pending()
-            ->upcoming()
-            ->with(['customer.user'])
+        $pendingBookings = Booking::where('status', 'pending')
+            ->whereNull('agent_id')
+            ->with(['customer.user:id,name'])
+            ->orderBy('scheduled_date')
+            ->limit(20)
+            ->get();
+
+        $myBookings = Booking::where('agent_id', $agent->id)
+            ->whereIn('status', ['confirmed', 'in_progress'])
+            ->with(['customer.user:id,name'])
             ->orderBy('scheduled_date')
             ->get();
 
         return response()->json([
-            'success' => true,
-            'bookings' => $bookings->map(fn($b) => $this->formatBooking($b)),
+            'pending' => $pendingBookings->map(fn($b) => $this->formatBooking($b)),
+            'my_bookings' => $myBookings->map(fn($b) => $this->formatBooking($b)),
+            'stats' => [
+                'pending_count' => $pendingBookings->count(),
+                'my_count' => $myBookings->count(),
+                'today_count' => $myBookings->where('scheduled_date', today())->count(),
+            ],
         ]);
     }
 
     /**
-     * Get today's bookings for agent
+     * Get pending bookings for agent to accept
      */
-    public function today(Request $request): JsonResponse
+    public function agentPending(Request $request): JsonResponse
+    {
+        $bookings = Booking::where('status', 'pending')
+            ->whereNull('agent_id')
+            ->with(['customer.user:id,name,profile_picture'])
+            ->orderBy('scheduled_date')
+            ->get()
+            ->map(fn($b) => $this->formatBooking($b));
+
+        return response()->json(['bookings' => $bookings]);
+    }
+
+    /**
+     * Get upcoming confirmed bookings for agent
+     */
+    public function agentUpcoming(Request $request): JsonResponse
     {
         $agent = $request->user()->agent;
-
+        
         if (!$agent) {
             return response()->json(['message' => 'Agent profile not found'], 404);
         }
 
         $bookings = Booking::where('agent_id', $agent->id)
-            ->today()
+            ->where('scheduled_date', '>=', today())
             ->whereIn('status', ['confirmed', 'in_progress'])
-            ->with(['customer.user'])
+            ->with(['customer.user:id,name,profile_picture'])
+            ->orderBy('scheduled_date')
+            ->get()
+            ->map(fn($b) => $this->formatBooking($b));
+
+        return response()->json(['bookings' => $bookings]);
+    }
+
+    /**
+     * Get today's bookings for agent
+     */
+    public function agentToday(Request $request): JsonResponse
+    {
+        $agent = $request->user()->agent;
+        
+        if (!$agent) {
+            return response()->json(['message' => 'Agent profile not found'], 404);
+        }
+
+        $bookings = Booking::where('agent_id', $agent->id)
+            ->whereDate('scheduled_date', today())
+            ->whereIn('status', ['confirmed', 'in_progress'])
+            ->with(['customer.user:id,name,profile_picture,phone'])
             ->orderBy('scheduled_time')
-            ->get();
+            ->get()
+            ->map(fn($b) => $this->formatBooking($b, true));
 
         return response()->json([
-            'success' => true,
-            'bookings' => $bookings->map(fn($b) => $this->formatBooking($b)),
+            'bookings' => $bookings,
             'count' => $bookings->count(),
         ]);
     }
 
     /**
+     * Get single booking details for agent
+     */
+    public function agentShow(Request $request, Booking $booking): JsonResponse
+    {
+        $agent = $request->user()->agent;
+        
+        // Agent can view if assigned OR if booking is pending (to accept)
+        $canView = ($agent && $booking->agent_id === $agent->id) || 
+                   ($booking->status === 'pending' && $booking->agent_id === null);
+
+        if (!$canView) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return response()->json([
+            'booking' => $this->formatBooking($booking->load(['customer.user', 'lineRequest']), true),
+        ]);
+    }
+
+    /**
+     * Confirm/accept a booking
+     */
+    public function agentConfirm(Request $request, Booking $booking): JsonResponse
+    {
+        $agent = $request->user()->agent;
+        
+        if (!$agent) {
+            return response()->json(['message' => 'Agent profile not found'], 404);
+        }
+
+        if (!$booking->isPending()) {
+            return response()->json(['message' => 'Booking hii haiwezi kukubaliwa'], 400);
+        }
+
+        $success = $this->bookingService->confirmBooking($booking, $agent);
+
+        if ($success) {
+            return response()->json([
+                'message' => 'Umekubali booking! Customer amearibiwa.',
+                'booking' => $this->formatBooking($booking->fresh(['customer.user'])),
+            ]);
+        }
+
+        return response()->json(['message' => 'Huna uwezo wa kukubali booking hii (labda una booking nyingine wakati huo)'], 400);
+    }
+
+    /**
+     * Cancel a booking as agent
+     */
+    public function agentCancel(Request $request, Booking $booking): JsonResponse
+    {
+        $agent = $request->user()->agent;
+        
+        if (!$agent || $booking->agent_id !== $agent->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $success = $this->bookingService->cancelBooking($booking, $validated['reason'], 'agent');
+
+        if ($success) {
+            return response()->json(['message' => 'Booking imeghairiwa. Customer amearibiwa.']);
+        }
+
+        return response()->json(['message' => 'Haiwezekani kughairi booking hii'], 400);
+    }
+
+    // ==================== HELPERS ====================
+
+    /**
      * Format booking for API response
      */
-    protected function formatBooking(Booking $booking, bool $detailed = false): array
+    private function formatBooking(Booking $booking, bool $includeContact = false): array
     {
         $data = [
             'id' => $booking->id,
             'booking_number' => $booking->booking_number,
             'line_type' => $booking->line_type,
+            'status' => $booking->status,
             'scheduled_date' => $booking->scheduled_date->format('Y-m-d'),
-            'scheduled_date_formatted' => $booking->scheduled_date->format('d M Y'),
+            'scheduled_date_display' => $booking->scheduled_date->format('d M Y'),
             'scheduled_time' => $booking->scheduled_time?->format('H:i'),
             'time_slot' => $booking->time_slot,
             'time_slot_label' => $booking->getTimeSlotLabel(),
-            'status' => $booking->status,
-            'status_color' => $booking->getStatusColor(),
+            'address' => $booking->address,
+            'notes' => $booking->notes,
             'is_today' => $booking->isToday(),
             'can_cancel' => $booking->canBeCancelled(),
             'created_at' => $booking->created_at->diffForHumans(),
         ];
 
+        // Customer info
+        if ($booking->customer) {
+            $data['customer'] = [
+                'id' => $booking->customer->id,
+                'name' => $booking->customer->user?->name ?? 'Customer',
+                'profile_picture' => $booking->customer->user?->profile_picture,
+            ];
+            if ($includeContact) {
+                $data['customer']['phone'] = $booking->phone;
+            }
+        }
+
+        // Agent info
         if ($booking->agent) {
             $data['agent'] = [
                 'id' => $booking->agent->id,
-                'name' => $booking->agent->user?->name,
-                'phone' => $booking->agent->phone,
+                'name' => $booking->agent->user?->name ?? 'Agent',
                 'profile_picture' => $booking->agent->user?->profile_picture,
                 'rating' => $booking->agent->rating,
             ];
+            if ($includeContact) {
+                $data['agent']['phone'] = $booking->agent->phone;
+            }
         }
 
-        if ($booking->customer && $detailed) {
-            $data['customer'] = [
-                'id' => $booking->customer->id,
-                'name' => $booking->customer->user?->name,
-                'phone' => $booking->phone,
+        // Location
+        if ($booking->latitude && $booking->longitude) {
+            $data['location'] = [
+                'latitude' => (float) $booking->latitude,
+                'longitude' => (float) $booking->longitude,
             ];
         }
 
-        if ($detailed) {
-            $data['address'] = $booking->address;
-            $data['latitude'] = $booking->latitude;
-            $data['longitude'] = $booking->longitude;
-            $data['notes'] = $booking->notes;
-            $data['is_recurring'] = $booking->is_recurring;
-            $data['recurrence_type'] = $booking->recurrence_type;
-            $data['confirmed_at'] = $booking->agent_confirmed_at?->diffForHumans();
-
-            if ($booking->lineRequest) {
-                $data['line_request_id'] = $booking->lineRequest->id;
-                $data['line_request_status'] = $booking->lineRequest->status->value ?? $booking->lineRequest->status;
-            }
+        // Linked line request
+        if ($booking->lineRequest) {
+            $data['line_request'] = [
+                'id' => $booking->lineRequest->id,
+                'request_number' => $booking->lineRequest->request_number,
+                'status' => $booking->lineRequest->status->value ?? $booking->lineRequest->status,
+            ];
         }
 
         return $data;

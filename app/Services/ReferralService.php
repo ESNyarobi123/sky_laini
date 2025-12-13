@@ -83,6 +83,30 @@ class ReferralService
     }
 
     /**
+     * Check if user has unused referral discount
+     */
+    public function hasUnusedDiscount(User $user): bool
+    {
+        return Referral::where('referred_id', $user->id)
+            ->where('status', 'pending')
+            ->where('discount_amount', '>', 0)
+            ->exists();
+    }
+
+    /**
+     * Get the discount amount for a user
+     */
+    public function getDiscountAmount(User $user): float
+    {
+        $referral = Referral::where('referred_id', $user->id)
+            ->where('status', 'pending')
+            ->where('discount_amount', '>', 0)
+            ->first();
+
+        return $referral?->discount_amount ?? 0;
+    }
+
+    /**
      * Complete a referral after first transaction
      */
     public function completeReferral(User $user): bool

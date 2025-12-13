@@ -229,6 +229,25 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [CustomerController::class, 'profile']);
         Route::put('/profile', [CustomerController::class, 'updateProfile']);
         Route::post('/location', [CustomerController::class, 'updateLocation']);
+
+        // Customer Bookings
+        Route::prefix('bookings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\BookingController::class, 'customerIndex']);
+            Route::post('/', [\App\Http\Controllers\Api\BookingController::class, 'customerStore']);
+            Route::get('/available-dates', [\App\Http\Controllers\Api\BookingController::class, 'availableDates']);
+            Route::get('/available-agents', [\App\Http\Controllers\Api\BookingController::class, 'availableAgents']);
+            Route::get('/{booking}', [\App\Http\Controllers\Api\BookingController::class, 'customerShow']);
+            Route::post('/{booking}/cancel', [\App\Http\Controllers\Api\BookingController::class, 'customerCancel']);
+        });
+
+        // Customer Referrals
+        Route::prefix('referrals')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ReferralController::class, 'index']);
+            Route::get('/code', [\App\Http\Controllers\Api\ReferralController::class, 'getMyCode']);
+            Route::get('/stats', [\App\Http\Controllers\Api\ReferralController::class, 'stats']);
+            Route::get('/history', [\App\Http\Controllers\Api\ReferralController::class, 'history']);
+            Route::get('/discount', [\App\Http\Controllers\Api\ReferralController::class, 'checkDiscount']);
+        });
     });
 
     // Nearby Agents - Get all agents with online/offline status for map
@@ -312,6 +331,26 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [WorkingHoursController::class, 'index']);
             Route::put('/', [WorkingHoursController::class, 'update']);
             Route::get('/status', [WorkingHoursController::class, 'checkStatus']);
+        });
+
+        // Agent Bookings
+        Route::prefix('bookings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\BookingController::class, 'agentIndex']);
+            Route::get('/pending', [\App\Http\Controllers\Api\BookingController::class, 'agentPending']);
+            Route::get('/upcoming', [\App\Http\Controllers\Api\BookingController::class, 'agentUpcoming']);
+            Route::get('/today', [\App\Http\Controllers\Api\BookingController::class, 'agentToday']);
+            Route::get('/{booking}', [\App\Http\Controllers\Api\BookingController::class, 'agentShow']);
+            Route::post('/{booking}/confirm', [\App\Http\Controllers\Api\BookingController::class, 'agentConfirm']);
+            Route::post('/{booking}/cancel', [\App\Http\Controllers\Api\BookingController::class, 'agentCancel']);
+        });
+
+        // Agent Referrals
+        Route::prefix('referrals')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ReferralController::class, 'index']);
+            Route::get('/code', [\App\Http\Controllers\Api\ReferralController::class, 'getMyCode']);
+            Route::get('/stats', [\App\Http\Controllers\Api\ReferralController::class, 'stats']);
+            Route::get('/history', [\App\Http\Controllers\Api\ReferralController::class, 'history']);
+            Route::get('/earnings', [\App\Http\Controllers\Api\ReferralController::class, 'earnings']);
         });
 
         // Get directions to customer
