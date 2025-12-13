@@ -23,6 +23,7 @@ class AuthController extends Controller
             'phone' => 'required|string|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|in:customer,agent',
+            'referral_code' => 'nullable|string|max:20',
         ]);
 
         $user = User::create([
@@ -56,11 +57,30 @@ class AuthController extends Controller
             ]);
         }
 
+        // Handle Referral Code if provided
+        $referralApplied = false;
+        $referralMessage = null;
+        if (!empty($validated['referral_code'])) {
+            $referralService = app(\App\Services\ReferralService::class);
+            $referral = $referralService->applyReferralCode($user, $validated['referral_code']);
+            
+            if ($referral) {
+                $referralApplied = true;
+                if ($user->isCustomer()) {
+                    $referralMessage = "Umepata TSh " . number_format($referral->discount_amount) . " discount kwenye order yako ya kwanza!";
+                } else {
+                    $referralMessage = "Utapata TSh " . number_format($referral->discount_amount) . " bonus ukikamilisha kazi yako ya kwanza!";
+                }
+            }
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'user' => $user,
             'token' => $token,
+            'referral_applied' => $referralApplied,
+            'referral_message' => $referralMessage,
         ], 201);
     }
 

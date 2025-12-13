@@ -90,6 +90,18 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
     Route::put('/profile/password', [\App\Http\Controllers\Web\ProfileController::class, 'updatePassword'])->name('profile.password.update');
     Route::post('/profile/picture', [\App\Http\Controllers\Web\ProfileController::class, 'uploadPicture'])->name('profile.picture.upload');
     Route::delete('/profile/picture', [\App\Http\Controllers\Web\ProfileController::class, 'deletePicture'])->name('profile.picture.delete');
+
+    // Referral Program
+    Route::get('/referrals', [\App\Http\Controllers\Web\ReferralController::class, 'index'])->name('referrals.index');
+
+    // Booking System
+    Route::prefix('bookings')->name('bookings.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Web\BookingController::class, 'customerIndex'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Web\BookingController::class, 'customerCreate'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Web\BookingController::class, 'customerStore'])->name('store');
+        Route::get('/{booking}', [\App\Http\Controllers\Web\BookingController::class, 'customerShow'])->name('show');
+        Route::post('/{booking}/cancel', [\App\Http\Controllers\Web\BookingController::class, 'customerCancel'])->name('cancel');
+    });
 });
 
 // Agent Dashboard
@@ -135,6 +147,17 @@ Route::middleware(['auth'])->prefix('agent')->name('agent.')->group(function () 
     Route::post('/profile/picture', [\App\Http\Controllers\Web\ProfileController::class, 'uploadPicture'])->name('profile.picture.upload');
     Route::delete('/profile/picture', [\App\Http\Controllers\Web\ProfileController::class, 'deletePicture'])->name('profile.picture.delete');
     Route::post('/profile/withdrawal', [\App\Http\Controllers\Web\ProfileController::class, 'requestWithdrawal'])->name('profile.withdrawal.request');
+
+    // Referral Program
+    Route::get('/referrals', [\App\Http\Controllers\Web\ReferralController::class, 'index'])->name('referrals.index');
+
+    // Booking System
+    Route::prefix('bookings')->name('bookings.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Web\BookingController::class, 'agentIndex'])->name('index');
+        Route::get('/{booking}', [\App\Http\Controllers\Web\BookingController::class, 'agentShow'])->name('show');
+        Route::post('/{booking}/confirm', [\App\Http\Controllers\Web\BookingController::class, 'agentConfirm'])->name('confirm');
+        Route::post('/{booking}/cancel', [\App\Http\Controllers\Web\BookingController::class, 'agentCancel'])->name('cancel');
+    });
 });
 
 // Admin Dashboard
@@ -201,45 +224,29 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::delete('/notifications/{notification}', [\App\Http\Controllers\Admin\PushNotificationController::class, 'destroy'])->name('notifications.destroy');
     Route::post('/notifications/{notification}/resend', [\App\Http\Controllers\Admin\PushNotificationController::class, 'resend'])->name('notifications.resend');
     Route::post('/notifications/delete-by-type', [\App\Http\Controllers\Admin\PushNotificationController::class, 'deleteByType'])->name('notifications.delete-by-type');
-});
 
-// Temporary Debug Route (Delete after fixing)
-Route::get('/debug-firebase', function () {
-    $results = [];
-    
-    // 1. Clear Cache
-    try {
-        \Illuminate\Support\Facades\Artisan::call('config:clear');
-        \Illuminate\Support\Facades\Artisan::call('cache:clear');
-        $results['cache'] = '✅ Cache Cleared Successfully';
-    } catch (\Exception $e) {
-        $results['cache'] = '❌ Cache Clear Failed: ' . $e->getMessage();
-    }
+    // Live Monitoring Dashboard
+    Route::prefix('monitoring')->name('monitoring.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\LiveMonitoringController::class, 'index'])->name('index');
+        Route::get('/live-data', [\App\Http\Controllers\Admin\LiveMonitoringController::class, 'liveData'])->name('live-data');
+        Route::get('/heatmap', [\App\Http\Controllers\Admin\LiveMonitoringController::class, 'heatmapData'])->name('heatmap');
+        Route::get('/agent/{agent}/history', [\App\Http\Controllers\Admin\LiveMonitoringController::class, 'agentLocationHistory'])->name('agent.history');
+        Route::get('/request/{lineRequest}', [\App\Http\Controllers\Admin\LiveMonitoringController::class, 'requestDetails'])->name('request.details');
+    });
 
-    // 2. Check Env
-    $envCreds = env('FIREBASE_CREDENTIALS');
-    $results['env_credentials'] = $envCreds ? "✅ Set: $envCreds" : '❌ Not Set in .env';
+    // Referral Management
+    Route::prefix('referrals')->name('referrals.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\ReferralController::class, 'index'])->name('index');
+        Route::get('/settings', [\App\Http\Controllers\Admin\ReferralController::class, 'settings'])->name('settings');
+        Route::post('/settings', [\App\Http\Controllers\Admin\ReferralController::class, 'updateSettings'])->name('settings.update');
+        Route::get('/leaderboard', [\App\Http\Controllers\Admin\ReferralController::class, 'leaderboard'])->name('leaderboard');
+    });
 
-    // 3. Check File Existence
-    $path = base_path($envCreds);
-    if (file_exists($path)) {
-        $results['file_check'] = "✅ File Found at: $path";
-        $results['file_readable'] = is_readable($path) ? "✅ File is Readable" : "❌ File is NOT Readable (Check Permissions)";
-        $content = file_get_contents($path);
-        $json = json_decode($content, true);
-        $results['json_valid'] = $json ? "✅ JSON is Valid (Project: " . ($json['project_id'] ?? 'Unknown') . ")" : "❌ Invalid JSON Content";
-    } else {
-        $results['file_check'] = "❌ File NOT Found at: $path (Current Dir: " . getcwd() . ")";
-        $results['dir_listing'] = scandir(base_path());
-    }
-
-    // 4. Test Firebase Init
-    try {
-        $messaging = \Kreait\Laravel\Firebase\Facades\Firebase::messaging();
-        $results['firebase_init'] = "✅ Firebase Messaging Initialized Successfully";
-    } catch (\Exception $e) {
-        $results['firebase_init'] = "❌ Firebase Init Failed: " . $e->getMessage();
-    }
-
-    return $results;
+    // Bookings Management
+    Route::prefix('bookings')->name('bookings.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\BookingController::class, 'index'])->name('index');
+        Route::get('/calendar', [\App\Http\Controllers\Admin\BookingController::class, 'calendar'])->name('calendar');
+        Route::get('/{booking}', [\App\Http\Controllers\Admin\BookingController::class, 'show'])->name('show');
+        Route::post('/{booking}/cancel', [\App\Http\Controllers\Admin\BookingController::class, 'cancel'])->name('cancel');
+    });
 });

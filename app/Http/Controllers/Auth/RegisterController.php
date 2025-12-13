@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\User;
+use App\Models\Wallet;
+use App\Services\ReferralService;
 use App\UserRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,6 +16,13 @@ use Illuminate\View\View;
 
 class RegisterController extends Controller
 {
+    protected ReferralService $referralService;
+
+    public function __construct(ReferralService $referralService)
+    {
+        $this->referralService = $referralService;
+    }
+
     public function showRegistrationForm(): View
     {
         return view('auth.register');
@@ -27,6 +36,7 @@ class RegisterController extends Controller
             'phone' => 'required|string|unique:users',
             'role' => 'required|in:customer,agent',
             'password' => 'required|string|min:8|confirmed',
+            'referral_code' => 'nullable|string|max:20',
         ]);
 
         $user = User::create([
@@ -44,13 +54,33 @@ class RegisterController extends Controller
                 'phone' => $validated['phone'],
             ]);
         } elseif ($user->isAgent()) {
-            \App\Models\Agent::create([
+            $agent = \App\Models\Agent::create([
                 'user_id' => $user->id,
                 'phone' => $validated['phone'],
                 'nida_number' => 'TEMP-' . uniqid(),
                 'is_verified' => false,
                 'is_online' => false,
             ]);
+
+            // Create Wallet for agent
+            Wallet::create([
+                'agent_id' => $agent->id,
+                'balance' => 0,
+                'pending_balance' => 0,
+            ]);
+        }
+
+        // Handle Referral Code if provided
+        if (!empty($validated['referral_code'])) {
+            $referral = $this->referralService->applyReferralCode($user, $validated['referral_code']);
+            
+            if ($referral) {
+                $message = $user->isCustomer() 
+                    ? "Karibu! Umepata TSh " . number_format($referral->discount_amount) . " discount kwenye order yako ya kwanza!"
+                    : "Karibu! Utapata TSh " . number_format($referral->discount_amount) . " bonus ukikamilisha kazi yako ya kwanza!";
+                
+                session()->flash('referral_success', $message);
+            }
         }
 
         Auth::login($user);
@@ -65,3 +95,4 @@ class RegisterController extends Controller
         return redirect('/');
     }
 }
+

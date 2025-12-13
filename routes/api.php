@@ -635,6 +635,35 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/users', [AdminPushNotificationController::class, 'users']);
         Route::get('/history', [AdminPushNotificationController::class, 'history']);
     });
+
+    // Referral Program
+    Route::prefix('referrals')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\ReferralController::class, 'index']);
+        Route::get('/code', [\App\Http\Controllers\Api\ReferralController::class, 'getCode']);
+        Route::get('/history', [\App\Http\Controllers\Api\ReferralController::class, 'history']);
+        Route::post('/validate', [\App\Http\Controllers\Api\ReferralController::class, 'validateCode']);
+        Route::get('/leaderboard', [\App\Http\Controllers\Api\ReferralController::class, 'leaderboard']);
+        Route::get('/discount', [\App\Http\Controllers\Api\ReferralController::class, 'checkDiscount']);
+    });
+
+    // Advance Booking (Customer)
+    Route::prefix('bookings')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\BookingController::class, 'index']);
+        Route::get('/upcoming', [\App\Http\Controllers\Api\BookingController::class, 'upcoming']);
+        Route::post('/', [\App\Http\Controllers\Api\BookingController::class, 'store']);
+        Route::get('/available-agents', [\App\Http\Controllers\Api\BookingController::class, 'availableAgents']);
+        Route::get('/{booking}', [\App\Http\Controllers\Api\BookingController::class, 'show']);
+        Route::post('/{booking}/cancel', [\App\Http\Controllers\Api\BookingController::class, 'cancel']);
+    });
+
+    // Agent Booking Routes
+    Route::prefix('agent/bookings')->group(function () {
+        Route::get('/pending', [\App\Http\Controllers\Api\BookingController::class, 'pending']);
+        Route::get('/today', [\App\Http\Controllers\Api\BookingController::class, 'today']);
+        Route::get('/upcoming', [\App\Http\Controllers\Api\BookingController::class, 'upcoming']);
+        Route::post('/{booking}/confirm', [\App\Http\Controllers\Api\BookingController::class, 'confirm']);
+        Route::post('/{booking}/cancel', [\App\Http\Controllers\Api\BookingController::class, 'cancel']);
+    });
 });
 
 // System settings (public)

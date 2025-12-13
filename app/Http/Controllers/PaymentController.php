@@ -6,6 +6,7 @@ use App\Models\LineRequest;
 use App\RequestStatus;
 use App\Services\InvoiceService;
 use App\Services\InAppNotificationService;
+use App\Services\ReferralService;
 use App\Services\ZenoPayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -15,15 +16,18 @@ class PaymentController extends Controller
     protected $zenoPay;
     protected $invoiceService;
     protected $inAppNotificationService;
+    protected $referralService;
 
     public function __construct(
         ZenoPayService $zenoPay, 
         InvoiceService $invoiceService,
-        InAppNotificationService $inAppNotificationService
+        InAppNotificationService $inAppNotificationService,
+        ReferralService $referralService
     ) {
         $this->zenoPay = $zenoPay;
         $this->invoiceService = $invoiceService;
         $this->inAppNotificationService = $inAppNotificationService;
+        $this->referralService = $referralService;
     }
 
     public function initiate(Request $request, LineRequest $lineRequest)
@@ -236,6 +240,18 @@ class PaymentController extends Controller
 
             // 🔔 Notify both customer and agent that job is completed
             $this->inAppNotificationService->notifyJobCompleted($lineRequest);
+
+            // 🎁 Complete referral for CUSTOMER (first completed transaction = they used their discount)
+            $customerUser = $lineRequest->customer?->user;
+            if ($customerUser) {
+                $this->referralService->completeReferral($customerUser);
+            }
+
+            // 🎁 Complete referral for AGENT (first completed job = they get their bonus)
+            $agentUser = $lineRequest->agent?->user;
+            if ($agentUser) {
+                $this->referralService->completeReferral($agentUser);
+            }
 
             return response()->json([
                 'message' => 'Job completed successfully!',
