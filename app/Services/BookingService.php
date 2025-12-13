@@ -57,7 +57,7 @@ class BookingService
         $this->notifyAgentsAboutBooking($booking);
 
         // Notify customer
-        $this->notificationService->send(
+        $this->notificationService->sendBookingNotification(
             $customer->user,
             'booking_created',
             'Booking Imepokelewa! 📅',
@@ -79,7 +79,7 @@ class BookingService
         if ($booking->agent_id) {
             $agent = Agent::find($booking->agent_id);
             if ($agent) {
-                $this->notificationService->send(
+                $this->notificationService->sendBookingNotification(
                     $agent->user,
                     'new_booking',
                     'Booking Mpya! 📅',
@@ -96,7 +96,7 @@ class BookingService
             ->get();
 
         foreach ($agents as $agent) {
-            $this->notificationService->send(
+            $this->notificationService->sendBookingNotification(
                 $agent->user,
                 'new_booking_available',
                 'Booking Inapatikana! 📅',
@@ -124,7 +124,7 @@ class BookingService
             $booking->confirm($agent->id);
 
             // Notify customer
-            $this->notificationService->send(
+            $this->notificationService->sendBookingNotification(
                 $booking->customer->user,
                 'booking_confirmed',
                 'Booking Imekubaliwa! ✅',
@@ -133,7 +133,7 @@ class BookingService
             );
 
             // Notify agent
-            $this->notificationService->send(
+            $this->notificationService->sendBookingNotification(
                 $agent->user,
                 'booking_accepted',
                 'Umekubali Booking! 📋',
@@ -160,7 +160,7 @@ class BookingService
 
         // Notify relevant parties
         if ($cancelledBy === 'customer' && $booking->agent_id) {
-            $this->notificationService->send(
+            $this->notificationService->sendBookingNotification(
                 $booking->agent->user,
                 'booking_cancelled',
                 'Booking Imeghairiwa 😔',
@@ -168,7 +168,7 @@ class BookingService
                 ['booking_id' => $booking->id]
             );
         } elseif ($cancelledBy === 'agent') {
-            $this->notificationService->send(
+            $this->notificationService->sendBookingNotification(
                 $booking->customer->user,
                 'booking_cancelled',
                 'Booking Imeghairiwa 😔',
@@ -220,7 +220,7 @@ class BookingService
             });
 
             // Notify both parties
-            $this->notificationService->send(
+            $this->notificationService->sendBookingNotification(
                 $booking->customer->user,
                 'booking_started',
                 'Booking Yako Imeanza! 🚀',
@@ -228,7 +228,7 @@ class BookingService
                 ['booking_id' => $booking->id, 'line_request_id' => $lineRequest->id]
             );
 
-            $this->notificationService->send(
+            $this->notificationService->sendBookingNotification(
                 $booking->agent->user,
                 'booking_start_reminder',
                 'Booking ya Leo! ⏰',
@@ -341,7 +341,7 @@ class BookingService
 
         foreach ($bookings as $booking) {
             // Remind customer
-            $this->notificationService->send(
+            $this->notificationService->sendBookingNotification(
                 $booking->customer->user,
                 'booking_reminder',
                 'Kumbuka Booking Yako Kesho! ⏰',
@@ -350,7 +350,7 @@ class BookingService
             );
 
             // Remind agent
-            $this->notificationService->send(
+            $this->notificationService->sendBookingNotification(
                 $booking->agent->user,
                 'booking_reminder',
                 'Una Booking Kesho! ⏰',

@@ -85,6 +85,63 @@ class InAppNotificationService
     }
 
     /**
+     * Send notification for booking events (without LineRequest)
+     */
+    public function sendBookingNotification(
+        User $user,
+        string $type,
+        string $title,
+        string $message,
+        ?array $extraData = null
+    ): InAppNotification {
+        $config = InAppNotification::getTypeConfig($type);
+
+        $data = $extraData ?? [];
+
+        // Create in-app notification
+        $notification = InAppNotification::create([
+            'user_id' => $user->id,
+            'line_request_id' => null,
+            'type' => $type,
+            'title' => $title,
+            'message' => $message,
+            'icon' => $config['icon'],
+            'color' => $config['color'],
+            'data' => $data,
+        ]);
+
+        Log::info('Booking notification sent', [
+            'user_id' => $user->id,
+            'type' => $type,
+            'title' => $title,
+        ]);
+
+        // Also send push notification if user has FCM token
+        if ($this->pushService && $user->fcm_token) {
+            try {
+                $pushData = array_merge($data, [
+                    'type' => $type,
+                    'notification_id' => (string) $notification->id,
+                ]);
+                
+                // Convert any non-string values to strings for FCM
+                $pushData = array_map(function ($value) {
+                    return is_array($value) ? json_encode($value) : (string) $value;
+                }, $pushData);
+
+                $this->pushService->sendToUser($user, $title, $message, $pushData);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send push notification', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $notification;
+    }
+
+    /**
      * Notify all verified agents about a new line request
      */
     public function notifyAllAgentsNewRequest(LineRequest $lineRequest): void

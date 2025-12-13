@@ -57,8 +57,8 @@ class BookingController extends Controller
             'scheduled_date' => 'required|date|after_or_equal:today',
             'scheduled_time' => 'nullable|date_format:H:i',
             'time_slot' => 'nullable|in:morning,afternoon,evening',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
             'address' => 'nullable|string|max:500',
             'phone' => 'required|string|max:20',
             'notes' => 'nullable|string|max:1000',
@@ -71,6 +71,17 @@ class BookingController extends Controller
             return response()->json(['message' => 'Customer profile not found'], 404);
         }
 
+        // Use customer's saved location if not provided in request
+        if (empty($validated['latitude']) || empty($validated['longitude'])) {
+            $validated['latitude'] = $customer->current_latitude ?? $customer->default_latitude;
+            $validated['longitude'] = $customer->current_longitude ?? $customer->default_longitude;
+        }
+
+        // Use customer's default address if not provided
+        if (empty($validated['address'])) {
+            $validated['address'] = $customer->default_address ?? $request->user()->address ?? null;
+        }
+
         try {
             $booking = $this->bookingService->createBooking($validated, $customer);
 
@@ -79,7 +90,7 @@ class BookingController extends Controller
                 'booking' => $this->formatBooking($booking),
             ], 201);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to create booking: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Imeshindikana kuunda booking: ' . $e->getMessage()], 500);
         }
     }
 
