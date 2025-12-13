@@ -30,11 +30,18 @@ class BookingService
      */
     public function createBooking(array $data, Customer $customer): Booking
     {
+        // Determine scheduled_time: use provided time, or generate from time_slot
+        $scheduledTime = $data['scheduled_time'] ?? null;
+        
+        if (!$scheduledTime && isset($data['time_slot'])) {
+            $scheduledTime = $this->getDefaultTimeFromSlot($data['time_slot']);
+        }
+        
         $booking = Booking::create([
             'customer_id' => $customer->id,
             'line_type' => $data['line_type'],
             'scheduled_date' => $data['scheduled_date'],
-            'scheduled_time' => $data['scheduled_time'] ?? null,
+            'scheduled_time' => $scheduledTime,
             'time_slot' => $data['time_slot'] ?? null,
             'latitude' => $data['latitude'] ?? $customer->current_latitude,
             'longitude' => $data['longitude'] ?? $customer->current_longitude,
@@ -377,4 +384,18 @@ class BookingService
 
         return $expired;
     }
+
+    /**
+     * Get default time based on time slot
+     */
+    protected function getDefaultTimeFromSlot(string $timeSlot): ?string
+    {
+        return match ($timeSlot) {
+            'morning' => '08:00',
+            'afternoon' => '12:00',
+            'evening' => '16:00',
+            default => null,
+        };
+    }
 }
+
