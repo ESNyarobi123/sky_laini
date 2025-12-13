@@ -94,16 +94,24 @@ class ReferralService
     }
 
     /**
-     * Get the discount amount for a user
+     * Get the discount amount for a user (returns null if no discount)
      */
-    public function getDiscountAmount(User $user): float
+    public function getUnusedDiscountAmount(User $user): ?float
     {
         $referral = Referral::where('referred_id', $user->id)
             ->where('status', 'pending')
             ->where('discount_amount', '>', 0)
             ->first();
 
-        return $referral?->discount_amount ?? 0;
+        return $referral?->discount_amount;
+    }
+
+    /**
+     * Get the discount amount for a user (returns 0 if no discount)
+     */
+    public function getDiscountAmount(User $user): float
+    {
+        return $this->getUnusedDiscountAmount($user) ?? 0;
     }
 
     /**
@@ -207,7 +215,7 @@ class ReferralService
         $notificationService = app(InAppNotificationService::class);
 
         // Notify referrer
-        $notificationService->send(
+        $notificationService->sendBookingNotification(
             $referral->referrer,
             'referral_reward',
             'Hongera! Umepata Bonus! 🎉',
@@ -217,7 +225,7 @@ class ReferralService
 
         // Notify referred (if agent)
         if ($referral->referred_type === 'agent' && $referral->discount_amount > 0) {
-            $notificationService->send(
+            $notificationService->sendBookingNotification(
                 $referral->referred,
                 'referral_bonus',
                 'Bonus ya Kujiunga! 🎁',
@@ -288,24 +296,11 @@ class ReferralService
     }
 
     /**
-     * Check if user has unused referral discount
-     */
-    public function hasUnusedDiscount(User $user): ?float
-    {
-        $referral = Referral::where('referred_id', $user->id)
-            ->where('status', 'pending')
-            ->where('referred_type', 'customer')
-            ->first();
-
-        return $referral ? $referral->discount_amount : null;
-    }
-
-    /**
      * Apply referral discount to a line request
      */
     public function applyDiscount(User $user, float $originalAmount): array
     {
-        $discount = $this->hasUnusedDiscount($user);
+        $discount = $this->getUnusedDiscountAmount($user);
 
         if (!$discount) {
             return [

@@ -53,6 +53,7 @@
     .legend-dot.offline { background: #6b7280; }
     .legend-dot.busy { background: #f59e0b; }
     .legend-dot.customer { background: #3b82f6; }
+    .legend-dot.booking { background: #a855f7; }
     .legend-dot.route { background: #a855f7; width: 20px; height: 3px; border-radius: 2px; }
 
     @keyframes pulse {
@@ -248,6 +249,10 @@
                     <span class="text-white font-medium">Customer</span>
                 </div>
                 <div class="legend-item">
+                    <div class="legend-dot booking"></div>
+                    <span class="text-white font-medium">Booking</span>
+                </div>
+                <div class="legend-item">
                     <div class="legend-dot route"></div>
                     <span class="text-white font-medium">Active Route</span>
                 </div>
@@ -339,6 +344,7 @@
     let map;
     let agentMarkers = {};
     let customerMarkers = {};
+    let bookingMarkers = {};
     let routeLines = {};
     let heatLayer = null;
     let showHeatmap = false;
@@ -646,8 +652,12 @@
             bookingsHtml = '<div class="text-gray-500 text-center py-8">Hakuna booking leo</div>';
         } else {
             data.bookings_today.forEach(booking => {
+                const hasLocation = booking.location && booking.location.latitude && booking.location.longitude;
+                const clickHandler = hasLocation ? `onclick="focusBooking(${booking.id})"` : '';
+                const cursorClass = hasLocation ? '' : 'opacity-70';
+                
                 bookingsHtml += `
-                    <div class="request-card rounded-xl p-4">
+                    <div class="request-card rounded-xl p-4 ${cursorClass}" ${clickHandler}>
                         <div class="flex justify-between items-start mb-2">
                             <span class="font-bold text-white">#${booking.booking_number}</span>
                             <span class="status-badge status-${booking.status}">${booking.status}</span>
@@ -657,6 +667,7 @@
                             <div>📱 ${booking.line_type}</div>
                             <div>👤 ${booking.customer.name}</div>
                             ${booking.agent ? `<div class="text-green-400">🏍️ ${booking.agent.name}</div>` : ''}
+                            ${hasLocation ? `<div class="text-purple-400">📍 ${booking.location.address || 'Location set'}</div>` : '<div class="text-red-400">⚠️ No location</div>'}
                         </div>
                     </div>
                 `;
@@ -698,6 +709,60 @@
                 } else {
                     customerMarkers[markerId].setLatLng([customer.latitude, customer.longitude]);
                     customerMarkers[markerId].getPopup().setContent(popupContent);
+                }
+            });
+        }
+
+        // Add booking markers to map
+        if (data.bookings_today && data.bookings_today.length > 0) {
+            data.bookings_today.forEach(booking => {
+                // Skip if no location
+                if (!booking.location || !booking.location.latitude || !booking.location.longitude) {
+                    console.log('Booking without location:', booking.booking_number);
+                    return;
+                }
+                
+                const markerId = `booking-${booking.id}`;
+                const statusColor = {
+                    'pending': '#eab308',
+                    'confirmed': '#3b82f6',
+                    'in_progress': '#a855f7'
+                }[booking.status] || '#a855f7';
+                
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div class="marker-icon" style="background: linear-gradient(135deg, ${statusColor}, #7c3aed);">📅</div>`,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20],
+                    popupAnchor: [0, -20]
+                });
+
+                const popupContent = `
+                    <div class="p-2" style="min-width: 200px;">
+                        <div class="font-bold text-lg mb-2">📅 Booking #${booking.booking_number}</div>
+                        <div class="text-sm space-y-1">
+                            <div><strong>Status:</strong> <span style="color: ${statusColor}; text-transform: uppercase; font-weight: bold;">${booking.status}</span></div>
+                            <div><strong>Time:</strong> ${booking.time_slot || booking.scheduled_time || 'N/A'}</div>
+                            <div><strong>Line:</strong> ${booking.line_type}</div>
+                            <div><strong>Customer:</strong> ${booking.customer?.name || 'N/A'}</div>
+                            <div><strong>Phone:</strong> ${booking.customer?.phone || 'N/A'}</div>
+                            ${booking.location.address ? `<div><strong>Address:</strong> ${booking.location.address}</div>` : ''}
+                            ${booking.agent ? `<div class="text-green-600"><strong>Agent:</strong> ${booking.agent.name}</div>` : '<div class="text-amber-600">⏳ Waiting for agent...</div>'}
+                        </div>
+                        <button onclick="focusBooking(${booking.id})" class="mt-3 w-full py-2 bg-purple-500 text-white rounded font-bold text-sm">
+                            View Details
+                        </button>
+                    </div>
+                `;
+
+                if (bookingMarkers[markerId]) {
+                    bookingMarkers[markerId].setLatLng([booking.location.latitude, booking.location.longitude]);
+                    bookingMarkers[markerId].setIcon(icon);
+                    bookingMarkers[markerId].getPopup().setContent(popupContent);
+                } else {
+                    bookingMarkers[markerId] = L.marker([booking.location.latitude, booking.location.longitude], { icon })
+                        .addTo(map)
+                        .bindPopup(popupContent);
                 }
             });
         }
@@ -744,6 +809,15 @@
         }
     }
 
+    // Focus on a specific booking
+    function focusBooking(bookingId) {
+        const marker = bookingMarkers[`booking-${bookingId}`];
+        if (marker) {
+            map.setView(marker.getLatLng(), 15);
+            marker.openPopup();
+        }
+    }
+
     // View request details
     async function viewRequest(requestId) {
         try {
@@ -758,7 +832,7 @@
 
     // Center map on all markers
     function centerMap() {
-        const allMarkers = [...Object.values(agentMarkers), ...Object.values(customerMarkers)];
+        const allMarkers = [...Object.values(agentMarkers), ...Object.values(customerMarkers), ...Object.values(bookingMarkers)];
         if (allMarkers.length > 0) {
             const group = L.featureGroup(allMarkers);
             map.fitBounds(group.getBounds().pad(0.1));
