@@ -36,7 +36,7 @@ class LiveMonitoringController extends Controller
             'customers' => $this->getCustomersWithActiveRequests(),
             'all_customers' => $this->getAllCustomersWithLocation(),
             'active_requests' => $this->getActiveRequestsData(),
-            'bookings_today' => $this->getTodayBookings(),
+            'upcoming_bookings' => $this->getUpcomingBookings(),
             'stats' => $this->getStats(),
             'timestamp' => now()->toIso8601String(),
         ];
@@ -232,19 +232,25 @@ class LiveMonitoringController extends Controller
     }
 
     /**
-     * Get today's bookings with locations
+     * Get upcoming bookings with locations (today and future)
      */
-    protected function getTodayBookings(): array
+    protected function getUpcomingBookings(): array
     {
-        return Booking::whereDate('scheduled_date', today())
+        return Booking::where('scheduled_date', '>=', today())
             ->whereIn('status', ['confirmed', 'pending', 'in_progress'])
             ->with(['customer.user', 'agent.user'])
+            ->orderBy('scheduled_date')
+            ->orderBy('scheduled_time')
+            ->limit(50)
             ->get()
             ->map(function ($booking) {
                 return [
                     'id' => $booking->id,
                     'booking_number' => $booking->booking_number,
                     'status' => $booking->status,
+                    'scheduled_date' => $booking->scheduled_date->format('Y-m-d'),
+                    'scheduled_date_display' => $booking->scheduled_date->format('d M'),
+                    'is_today' => $booking->scheduled_date->isToday(),
                     'scheduled_time' => $booking->scheduled_time?->format('H:i'),
                     'time_slot' => $booking->getTimeSlotLabel(),
                     'line_type' => $booking->line_type,
@@ -288,6 +294,9 @@ class LiveMonitoringController extends Controller
             'total_requests_today' => LineRequest::whereDate('created_at', $today)->count(),
             
             'bookings_today' => Booking::whereDate('scheduled_date', $today)->count(),
+            'upcoming_bookings' => Booking::where('scheduled_date', '>=', $today)
+                ->whereIn('status', ['pending', 'confirmed'])
+                ->count(),
             'confirmed_bookings' => Booking::whereDate('scheduled_date', $today)
                 ->where('status', 'confirmed')
                 ->count(),

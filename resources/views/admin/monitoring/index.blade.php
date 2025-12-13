@@ -218,8 +218,8 @@
             <div class="text-2xl font-black text-green-400" id="stat-completed">{{ $stats['completed_today'] }}</div>
         </div>
         <div class="stat-mini rounded-2xl p-4">
-            <div class="text-gray-400 text-xs font-bold uppercase mb-1">Bookings Today</div>
-            <div class="text-2xl font-black text-purple-400" id="stat-bookings">{{ $stats['bookings_today'] }}</div>
+            <div class="text-gray-400 text-xs font-bold uppercase mb-1">Upcoming Bookings</div>
+            <div class="text-2xl font-black text-purple-400" id="stat-bookings">{{ $stats['upcoming_bookings'] ?? 0 }}</div>
         </div>
         <div class="stat-mini rounded-2xl p-4">
             <div class="text-gray-400 text-xs font-bold uppercase mb-1">Revenue Today</div>
@@ -414,7 +414,7 @@
                 customers: data.customers?.length || 0,
                 all_customers: data.all_customers?.length || 0,
                 active_requests: data.active_requests?.length || 0,
-                bookings_today: data.bookings_today?.length || 0
+                upcoming_bookings: data.upcoming_bookings?.length || 0
             });
 
             updateMarkers(data);
@@ -552,7 +552,7 @@
         document.getElementById('stat-active-requests').textContent = stats.active_requests;
         document.getElementById('stat-pending').textContent = stats.pending_requests;
         document.getElementById('stat-completed').textContent = stats.completed_today;
-        document.getElementById('stat-bookings').textContent = stats.bookings_today;
+        document.getElementById('stat-bookings').textContent = stats.upcoming_bookings || 0;
         document.getElementById('stat-revenue').textContent = 'TSh ' + stats.revenue_today.toLocaleString();
     }
 
@@ -646,23 +646,26 @@
         }
         document.getElementById('customers-list').innerHTML = customersHtml;
 
-        // Bookings list
+        // Bookings list (upcoming)
         let bookingsHtml = '';
-        if (data.bookings_today.length === 0) {
-            bookingsHtml = '<div class="text-gray-500 text-center py-8">Hakuna booking leo</div>';
+        const upcomingBookings = data.upcoming_bookings || [];
+        if (upcomingBookings.length === 0) {
+            bookingsHtml = '<div class="text-gray-500 text-center py-8">Hakuna booking zinazokuja</div>';
         } else {
-            data.bookings_today.forEach(booking => {
+            upcomingBookings.forEach(booking => {
                 const hasLocation = booking.location && booking.location.latitude && booking.location.longitude;
                 const clickHandler = hasLocation ? `onclick="focusBooking(${booking.id})"` : '';
                 const cursorClass = hasLocation ? '' : 'opacity-70';
+                const todayBadge = booking.is_today ? '<span class="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">LEO</span>' : '';
                 
                 bookingsHtml += `
                     <div class="request-card rounded-xl p-4 ${cursorClass}" ${clickHandler}>
                         <div class="flex justify-between items-start mb-2">
-                            <span class="font-bold text-white">#${booking.booking_number}</span>
+                            <span class="font-bold text-white">#${booking.booking_number}${todayBadge}</span>
                             <span class="status-badge status-${booking.status}">${booking.status}</span>
                         </div>
                         <div class="text-sm text-gray-400 space-y-1">
+                            <div>📅 ${booking.scheduled_date_display || booking.scheduled_date}</div>
                             <div>⏰ ${booking.time_slot}</div>
                             <div>📱 ${booking.line_type}</div>
                             <div>👤 ${booking.customer.name}</div>
@@ -714,8 +717,9 @@
         }
 
         // Add booking markers to map
-        if (data.bookings_today && data.bookings_today.length > 0) {
-            data.bookings_today.forEach(booking => {
+        const bookingsData = data.upcoming_bookings || [];
+        if (bookingsData.length > 0) {
+            bookingsData.forEach(booking => {
                 // Skip if no location
                 if (!booking.location || !booking.location.latitude || !booking.location.longitude) {
                     console.log('Booking without location:', booking.booking_number);
@@ -738,9 +742,10 @@
                 });
 
                 const popupContent = `
-                    <div class="p-2" style="min-width: 200px;">
+                    <div class="p-2" style="min-width: 220px;">
                         <div class="font-bold text-lg mb-2">📅 Booking #${booking.booking_number}</div>
                         <div class="text-sm space-y-1">
+                            <div><strong>Date:</strong> ${booking.scheduled_date_display || booking.scheduled_date}${booking.is_today ? ' <span style="color: #22c55e">(LEO)</span>' : ''}</div>
                             <div><strong>Status:</strong> <span style="color: ${statusColor}; text-transform: uppercase; font-weight: bold;">${booking.status}</span></div>
                             <div><strong>Time:</strong> ${booking.time_slot || booking.scheduled_time || 'N/A'}</div>
                             <div><strong>Line:</strong> ${booking.line_type}</div>
