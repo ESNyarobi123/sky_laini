@@ -49,4 +49,77 @@ class DocumentController extends Controller
 
         return back()->with('success', 'Documents uploaded successfully. Please wait for verification.');
     }
+
+    /**
+     * Upload face verification images (Liveness Detection)
+     */
+    public function uploadFaceVerification(Request $request)
+    {
+        $request->validate([
+            'face_center' => 'required|image|max:5120',
+            'face_left' => 'required|image|max:5120',
+            'face_right' => 'required|image|max:5120',
+            'face_up' => 'required|image|max:5120',
+            'face_down' => 'required|image|max:5120',
+        ], [
+            'face_center.required' => 'Picha ya katikati inahitajika',
+            'face_left.required' => 'Picha ya kushoto inahitajika',
+            'face_right.required' => 'Picha ya kulia inahitajika',
+            'face_up.required' => 'Picha ya juu inahitajika',
+            'face_down.required' => 'Picha ya chini inahitajika',
+        ]);
+
+        $agent = $request->user()->agent;
+
+        if (!$agent) {
+            return back()->with('error', 'Agent profile not found.');
+        }
+
+        // Store all face images
+        $faceImages = [];
+        $directions = ['center', 'left', 'right', 'up', 'down'];
+        
+        foreach ($directions as $direction) {
+            $field = 'face_' . $direction;
+            if ($request->hasFile($field)) {
+                $path = $request->file($field)->store("face_verifications/{$agent->id}", 'public');
+                $faceImages[$field] = $path;
+            }
+        }
+
+        // Create or update face verification record
+        $verification = \App\Models\AgentFaceVerification::updateOrCreate(
+            [
+                'agent_id' => $agent->id,
+                'status' => 'pending',
+            ],
+            array_merge($faceImages, [
+                'device_info' => $request->header('User-Agent'),
+                'ip_address' => $request->ip(),
+                'metadata' => [
+                    'submitted_from' => 'web',
+                    'submitted_at' => now()->toISOString(),
+                ],
+            ])
+        );
+
+        // Notify admins about new face verification
+        $admins = \App\Models\User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            \App\Models\Notification::create([
+                'user_id' => $admin->id,
+                'type' => 'face_verification_submitted',
+                'title' => 'Uthibitishaji Mpya wa Uso',
+                'message' => "Agent {$agent->user->name} amewasilisha picha za uso kwa uhakiki.",
+                'data' => [
+                    'verification_id' => $verification->id,
+                    'agent_id' => $agent->id,
+                    'agent_name' => $agent->user->name,
+                ],
+            ]);
+        }
+
+        return back()->with('success', 'Picha za uso zimepakiwa! Tafadhali subiri uhakiki.');
+    }
 }
+

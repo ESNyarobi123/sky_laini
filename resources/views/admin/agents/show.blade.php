@@ -106,6 +106,87 @@
                 </div>
             </div>
 
+            <!-- Face Verification (Liveness Detection) -->
+            @php
+                $faceVerification = $agent->faceVerification;
+            @endphp
+            <div class="glass-card rounded-3xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-white">🔐 Face Verification (Liveness)</h3>
+                    @if($faceVerification)
+                        @if($faceVerification->status === 'approved')
+                            <span class="px-3 py-1 rounded-full bg-green-500/20 text-green-500 text-xs font-bold">✓ Imehakikiwa</span>
+                        @elseif($faceVerification->status === 'rejected')
+                            <span class="px-3 py-1 rounded-full bg-red-500/20 text-red-500 text-xs font-bold">✗ Imekataliwa</span>
+                        @else
+                            <span class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-500 text-xs font-bold">⏳ Inasubiri</span>
+                        @endif
+                    @endif
+                </div>
+                
+                @if($faceVerification && $faceVerification->isComplete())
+                    <!-- Face Images Grid (Cross Pattern) -->
+                    <div class="grid grid-cols-3 gap-3 max-w-md mx-auto">
+                        <!-- Top Row - Up -->
+                        <div></div>
+                        <div class="text-center">
+                            <a href="{{ route('admin.face-verification.image', [$faceVerification, 'up']) }}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-amber-500/50 transition">
+                                <img src="{{ route('admin.face-verification.image', [$faceVerification, 'up']) }}" alt="Juu" class="w-full h-full object-cover">
+                            </a>
+                            <p class="text-gray-500 text-xs mt-1">⬆ Juu</p>
+                        </div>
+                        <div></div>
+
+                        <!-- Middle Row - Left, Center, Right -->
+                        <div class="text-center">
+                            <a href="{{ route('admin.face-verification.image', [$faceVerification, 'left']) }}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-amber-500/50 transition">
+                                <img src="{{ route('admin.face-verification.image', [$faceVerification, 'left']) }}" alt="Kushoto" class="w-full h-full object-cover">
+                            </a>
+                            <p class="text-gray-500 text-xs mt-1">⬅ Kushoto</p>
+                        </div>
+                        <div class="text-center">
+                            <a href="{{ route('admin.face-verification.image', [$faceVerification, 'center']) }}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border-2 border-amber-500 hover:border-amber-400 transition">
+                                <img src="{{ route('admin.face-verification.image', [$faceVerification, 'center']) }}" alt="Katikati" class="w-full h-full object-cover">
+                            </a>
+                            <p class="text-amber-500 text-xs mt-1 font-bold">⬤ Katikati</p>
+                        </div>
+                        <div class="text-center">
+                            <a href="{{ route('admin.face-verification.image', [$faceVerification, 'right']) }}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-amber-500/50 transition">
+                                <img src="{{ route('admin.face-verification.image', [$faceVerification, 'right']) }}" alt="Kulia" class="w-full h-full object-cover">
+                            </a>
+                            <p class="text-gray-500 text-xs mt-1">Kulia ➡</p>
+                        </div>
+
+                        <!-- Bottom Row - Down -->
+                        <div></div>
+                        <div class="text-center">
+                            <a href="{{ route('admin.face-verification.image', [$faceVerification, 'down']) }}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-amber-500/50 transition">
+                                <img src="{{ route('admin.face-verification.image', [$faceVerification, 'down']) }}" alt="Chini" class="w-full h-full object-cover">
+                            </a>
+                            <p class="text-gray-500 text-xs mt-1">⬇ Chini</p>
+                        </div>
+                        <div></div>
+                    </div>
+
+                    <!-- Actions -->
+                    @if($faceVerification->status === 'pending')
+                    <div class="flex gap-3 mt-6 justify-center">
+                        <a href="{{ route('admin.face-verification.show', $faceVerification) }}" class="px-4 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition font-bold text-sm">
+                            Angalia Zaidi
+                        </a>
+                    </div>
+                    @endif
+                @else
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 mx-auto bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                            <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </div>
+                        <p class="text-gray-500">Hakuna uthibitishaji wa uso bado.</p>
+                        <p class="text-gray-600 text-sm mt-1">Agent hajapakia picha za uso wake.</p>
+                    </div>
+                @endif
+            </div>
+
             <!-- Recent Jobs -->
             <div class="glass-card rounded-3xl p-6">
                 <h3 class="text-lg font-bold text-white mb-4">Recent Jobs</h3>

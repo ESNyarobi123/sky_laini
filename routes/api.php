@@ -333,6 +333,15 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/status', [WorkingHoursController::class, 'checkStatus']);
         });
 
+        // Face Verification (Liveness Detection)
+        Route::prefix('face-verification')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\FaceVerificationController::class, 'index']);
+            Route::post('/start', [\App\Http\Controllers\Api\FaceVerificationController::class, 'start']);
+            Route::post('/upload', [\App\Http\Controllers\Api\FaceVerificationController::class, 'uploadImage']);
+            Route::post('/upload-all', [\App\Http\Controllers\Api\FaceVerificationController::class, 'uploadAll']);
+            Route::post('/submit', [\App\Http\Controllers\Api\FaceVerificationController::class, 'submit']);
+        });
+
         // Agent Bookings
         Route::prefix('bookings')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\BookingController::class, 'agentIndex']);

@@ -24,6 +24,7 @@ class Agent extends Model
         'total_completed_requests',
         'total_earnings',
         'is_verified',
+        'face_verified',
         'is_available',
         'is_online',
         'current_latitude',
@@ -82,4 +83,15 @@ class Agent extends Model
     {
         return $this->hasMany(Withdrawal::class);
     }
+
+    public function faceVerification(): HasOne
+    {
+        return $this->hasOne(AgentFaceVerification::class)->latest();
+    }
+
+    public function faceVerifications(): HasMany
+    {
+        return $this->hasMany(AgentFaceVerification::class);
+    }
 }
+

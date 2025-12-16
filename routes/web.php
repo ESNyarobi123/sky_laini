@@ -126,6 +126,9 @@ Route::middleware(['auth'])->prefix('agent')->name('agent.')->group(function () 
 
     // Documents
     Route::post('/documents/upload', [\App\Http\Controllers\Agent\DocumentController::class, 'upload'])->name('documents.upload');
+    
+    // Face Verification (Liveness Detection)
+    Route::post('/face-verification/upload', [\App\Http\Controllers\Agent\DocumentController::class, 'uploadFaceVerification'])->name('face-verification.upload');
 
     // Chat Routes
     Route::get('/chat', [\App\Http\Controllers\Agent\ChatController::class, 'index'])->name('chat.index');
@@ -248,5 +251,15 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::get('/calendar', [\App\Http\Controllers\Admin\BookingController::class, 'calendar'])->name('calendar');
         Route::get('/{booking}', [\App\Http\Controllers\Admin\BookingController::class, 'show'])->name('show');
         Route::post('/{booking}/cancel', [\App\Http\Controllers\Admin\BookingController::class, 'cancel'])->name('cancel');
+    });
+
+    // Face Verification Management (Liveness Detection)
+    Route::prefix('face-verification')->name('face-verification.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\FaceVerificationController::class, 'index'])->name('index');
+        Route::get('/history', [\App\Http\Controllers\Admin\FaceVerificationController::class, 'history'])->name('history');
+        Route::get('/{verification}', [\App\Http\Controllers\Admin\FaceVerificationController::class, 'show'])->name('show');
+        Route::post('/{verification}/approve', [\App\Http\Controllers\Admin\FaceVerificationController::class, 'approve'])->name('approve');
+        Route::post('/{verification}/reject', [\App\Http\Controllers\Admin\FaceVerificationController::class, 'reject'])->name('reject');
+        Route::get('/{verification}/image/{direction}', [\App\Http\Controllers\Admin\FaceVerificationController::class, 'viewImage'])->name('image');
     });
 });
